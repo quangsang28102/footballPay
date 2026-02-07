@@ -160,15 +160,23 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const spreadsheetId = searchParams.get('id');
+    let spreadsheetId = searchParams.get('id');
     
+    // Fallback to server-side environment variable if no ID in URL
+    if (!spreadsheetId) {
+      spreadsheetId = process.env.SPREADSHEET_ID?.trim() || null;
+    }
+
+    if (!spreadsheetId) {
+      return NextResponse.json({ 
+        error: 'Thiếu Spreadsheet ID',
+        help: 'Bạn có thể truyền ID qua URL (?id=...) hoặc cấu hình SPREADSHEET_ID trong Vercel để dùng link rút gọn.'
+      }, { status: 400 });
+    }
+
     // Normalize credentials from environment variables
     const client_email = process.env.GOOGLE_CLIENT_EMAIL?.trim();
     let private_key = process.env.GOOGLE_PRIVATE_KEY?.trim();
-
-    if (!spreadsheetId) {
-      return NextResponse.json({ error: 'Thiếu Spreadsheet ID (id parameter)' }, { status: 400 });
-    }
 
     if (!client_email || !private_key) {
       const missing = [];
