@@ -117,38 +117,65 @@ export async function POST(req: NextRequest) {
     const sortedMatches = [...data.matches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const sortedPlayers = [...data.players].sort((a, b) => a.name.localeCompare(b.name));
 
-    // Precise header building
-    const statsHeader1 = ['STT', 'Thời gian'];
-    const statsHeader2 = ['STT', 'Tên'];
+    // Precise header building with explicit array sizes
+    const matchCount = sortedMatches.length;
+    const headerWidth = 2 + (matchCount * 2) + 3;
     
-    sortedMatches.forEach(m => {
-      const dateStr = new Date(m.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      // Header 1: Column for date (will be merged later), then empty
-      statsHeader1.push(dateStr, '');
-      // Header 2: Column labels
-      statsHeader2.push('Số lượng', 'Giá/slot');
+    const statsHeader1 = new Array(headerWidth).fill('');
+    const statsHeader2 = new Array(headerWidth).fill('');
+
+    // STT & Tên
+    statsHeader1[0] = 'STT'; statsHeader1[1] = 'Thời gian';
+    statsHeader2[0] = 'STT'; statsHeader2[1] = 'Tên';
+
+    sortedMatches.forEach((m, i) => {
+      const colIndex = 2 + (i * 2);
+      // Format date as dd/mm/yyyy manually to be safe
+      const d = new Date(m.date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const dateStr = `${day}/${month}/${year}`;
+      
+      statsHeader1[colIndex] = dateStr;
+      statsHeader2[colIndex] = 'Số lượng';
+      statsHeader2[colIndex + 1] = 'Giá/slot';
     });
 
-    // Add Totals at the end
-    statsHeader1.push('Tổng tiền', 'Đã trả', 'Còn nợ');
-    statsHeader2.push('Tổng tiền', 'Đã trả', 'Còn nợ');
+    // Totals
+    const lastMatchCol = 2 + (matchCount * 2);
+    statsHeader1[lastMatchCol] = 'Tổng tiền';
+    statsHeader1[lastMatchCol + 1] = 'Đã trả';
+    statsHeader1[lastMatchCol + 2] = 'Còn nợ';
+    
+    // Fill row 2 of totals too so it persists after merge
+    statsHeader2[lastMatchCol] = 'Tổng tiền';
+    statsHeader2[lastMatchCol + 1] = 'Đã trả';
+    statsHeader2[lastMatchCol + 2] = 'Còn nợ';
 
     const statsRows = sortedPlayers.map((player, index) => {
-      const row: any[] = [index + 1, player.name];
+      const row = new Array(headerWidth).fill('');
+      row[0] = index + 1;
+      row[1] = player.name;
+      
       let totalOwed = 0; 
       let totalPaid = 0;
       
-      sortedMatches.forEach(match => {
+      sortedMatches.forEach((match, i) => {
+        const colIndex = 2 + (i * 2);
         const playerPayments = data.payments.filter(p => p.matchId === match.id && p.playerId === player.id);
         const matchOwed = playerPayments.reduce((s, p) => s + p.amountOwed, 0);
         const matchPaid = playerPayments.reduce((s, p) => s + p.amountPaid, 0);
         
-        row.push(playerPayments.length || 0, formatCurrency(matchOwed));
+        row[colIndex] = playerPayments.length || 0;
+        row[colIndex + 1] = formatCurrency(matchOwed);
         totalOwed += matchOwed;
         totalPaid += matchPaid;
       });
       
-      row.push(formatCurrency(totalOwed), formatCurrency(totalPaid), formatCurrency(totalOwed - totalPaid));
+      row[lastMatchCol] = formatCurrency(totalOwed);
+      row[lastMatchCol + 1] = formatCurrency(totalPaid);
+      row[lastMatchCol + 2] = formatCurrency(totalOwed - totalPaid);
       return row;
     });
 
@@ -215,17 +242,18 @@ export async function POST(req: NextRequest) {
               verticalAlignment: 'MIDDLE',
               textFormat: { bold: true },
               backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+              numberFormat: { type: 'TEXT' }, // Force text for headers to avoid 46062
               borders: {
                 top: { style: 'SOLID' }, bottom: { style: 'SOLID' },
                 left: { style: 'SOLID' }, right: { style: 'SOLID' }
               }
             }
           },
-          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat,backgroundColor,borders)'
+          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat,backgroundColor,numberFormat,borders)'
         }
       });
 
-      // 4. APPLY BORDERS TO DATA
+      // 4. APPLY BORDERS TO DATA & ALIGNMENT
       formattingRequests.push({
         updateBorders: {
           range: { sheetId: statsSheetId, startRowIndex: 2, endRowIndex: totalRowCount, startColumnIndex: 0, endColumnIndex: totalColCount },
@@ -235,10 +263,17 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // 5. DATA ALIGNMENT (Center STT and Quantity)
+      // Center STT and all Match/Total columns (everything except Player Name at index 1)
       formattingRequests.push({
         repeatCell: {
           range: { sheetId: statsSheetId, startRowIndex: 2, endRowIndex: totalRowCount, startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { horizontalAlignment: 'CENTER' } },
+          fields: 'userEnteredFormat.horizontalAlignment'
+        }
+      });
+      formattingRequests.push({
+        repeatCell: {
+          range: { sheetId: statsSheetId, startRowIndex: 2, endRowIndex: totalRowCount, startColumnIndex: 2, endColumnIndex: totalColCount },
           cell: { userEnteredFormat: { horizontalAlignment: 'CENTER' } },
           fields: 'userEnteredFormat.horizontalAlignment'
         }
