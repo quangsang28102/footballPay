@@ -162,25 +162,43 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const spreadsheetId = searchParams.get('id');
     
-    // We try to get credentials from environment variables first for public access
-    const client_email = process.env.GOOGLE_CLIENT_EMAIL;
-    const private_key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    // Normalize credentials from environment variables
+    const client_email = process.env.GOOGLE_CLIENT_EMAIL?.trim();
+    let private_key = process.env.GOOGLE_PRIVATE_KEY?.trim();
 
     if (!spreadsheetId) {
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing spreadsheetId (id parameter)' }, { status: 400 });
     }
 
     if (!client_email || !private_key) {
-      return NextResponse.json({ error: 'Server not configured for cloud fetching' }, { status: 500 });
+      const missing = [];
+      if (!client_email) missing.push('GOOGLE_CLIENT_EMAIL');
+      if (!private_key) missing.push('GOOGLE_PRIVATE_KEY');
+      return NextResponse.json({ 
+        error: `Server sync not configured. Missing: ${missing.join(', ')}`,
+        help: 'Please add these environment variables in your Vercel project settings.'
+      }, { status: 500 });
     }
 
+    // Handle private key formatting: 
+    // 1. Remove wrapping quotes if any
+    if (private_key.startsWith('"') && private_key.endsWith('"')) {
+      private_key = private_key.substring(1, private_key.length - 1);
+    }
+    // 2. Handle literal \n strings vs actual newlines
+    private_key = private_key.replace(/\\n/g, '\n');
+
     const auth = new google.auth.GoogleAuth({
-      credentials: { client_email, private_key },
+      credentials: { 
+        client_email, 
+        private_key 
+      },
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
     
+    // Fetch from the raw data sheet we created during POST sync
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: '_APP_DATA_!A1',
@@ -188,12 +206,20 @@ export async function GET(req: NextRequest) {
 
     const rawData = response.data.values?.[0]?.[0];
     if (!rawData) {
-      return NextResponse.json({ error: 'No data found in sheet' }, { status: 404 });
+      return NextResponse.json({ error: 'No data found in sheet tab _APP_DATA_!A1' }, { status: 404 });
     }
 
-    return NextResponse.json(JSON.parse(rawData));
+    try {
+      const parsedData = JSON.parse(rawData);
+      return NextResponse.json(parsedData);
+    } catch (e) {
+      return NextResponse.json({ error: 'Data in sheet is not valid JSON' }, { status: 500 });
+    }
   } catch (error: any) {
     console.error('Fetch Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message || 'Internal Server Error',
+      details: error.response?.data || 'No additional details'
+    }, { status: 500 });
   }
 }
