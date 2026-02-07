@@ -39,12 +39,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedPin = localStorage.getItem(PIN_KEY) || encrypt(DEFAULT_PIN);
     const savedToken = localStorage.getItem(AUTH_KEY);
     
-    // Verify token: In a real app this would be a real hash. 
-    // Here we check if the token matches the current encrypted PIN
     if (savedToken && savedToken === savedPin) {
       setIsAdmin(true);
     }
     setIsLoading(false);
+
+    // Sync across tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === PIN_KEY || e.key === AUTH_KEY) {
+        const currentPin = localStorage.getItem(PIN_KEY) || encrypt(DEFAULT_PIN);
+        const currentToken = localStorage.getItem(AUTH_KEY);
+        
+        if (currentToken && currentToken === currentPin) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   useEffect(() => {
