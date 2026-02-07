@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Add Bold and Center Alignment to Row 1 & 2
+      // Add Bold, Center Alignment and Background Color to Headers (Row 1 & 2)
       formattingRequests.push({
         repeatCell: {
           range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: lastMatchCol + 3 },
@@ -192,10 +192,30 @@ export async function POST(req: NextRequest) {
             userEnteredFormat: {
               horizontalAlignment: 'CENTER',
               verticalAlignment: 'MIDDLE',
-              textFormat: { bold: true }
+              textFormat: { bold: true },
+              backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 }
             }
           },
-          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat)'
+          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat,backgroundColor)'
+        }
+      });
+
+      // Add Borders to the entire table
+      formattingRequests.push({
+        updateBorders: {
+          range: { 
+            sheetId: statsSheetId, 
+            startRowIndex: 0, 
+            endRowIndex: statsRows.length + 2, 
+            startColumnIndex: 0, 
+            endColumnIndex: lastMatchCol + 3 
+          },
+          top: { style: 'SOLID', width: 1 },
+          bottom: { style: 'SOLID', width: 1 },
+          left: { style: 'SOLID', width: 1 },
+          right: { style: 'SOLID', width: 1 },
+          innerHorizontal: { style: 'SOLID', width: 1 },
+          innerVertical: { style: 'SOLID', width: 1 },
         }
       });
 
