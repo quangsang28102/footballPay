@@ -35,6 +35,8 @@ function MemberViewContent() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [qrStatus, setQrStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [qrRetry, setQrRetry] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -326,17 +328,35 @@ function MemberViewContent() {
                     <div className="animate-in fade-in zoom-in duration-700">
                       <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-500/10 mb-4 relative flex items-center justify-center overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
-                        <img 
-                          src={`https://img.vietqr.io/image/MOMO-${data.bankInfo?.accountNumber}-compact2.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo?.accountHolder || '')}`}
-                          alt="MoMo QR"
-                          className="w-full h-auto rounded-xl relative z-10"
-                        />
-                        <div className="absolute z-20 w-10 h-10 bg-white rounded-lg p-1 shadow-lg border border-slate-100 flex items-center justify-center">
-                           <img 
-                             src="https://homepage.momocdn.net/fileuploads/svg/momo-file-240411162904.svg" 
-                             alt="MoMo Logo"
-                             className="w-full h-full object-contain"
-                           />
+                        <div className="relative z-10 w-full aspect-square flex items-center justify-center">
+                          {qrStatus === 'loading' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 rounded-xl z-20">
+                              <RefreshCw size={24} className="text-indigo-500 animate-spin" />
+                            </div>
+                          )}
+                          {qrStatus === 'error' && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/90 rounded-xl z-20 p-4 text-center">
+                              <AlertCircle size={32} className="text-red-500 mb-2" />
+                              <p className="text-[10px] text-slate-800 font-bold mb-3">Lỗi tải mã QR</p>
+                              <button 
+                                onClick={() => {
+                                  setQrStatus('loading');
+                                  setQrRetry(prev => prev + 1);
+                                }}
+                                className="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold hover:bg-indigo-700 transition-colors shadow-lg"
+                              >
+                                Thử lại
+                              </button>
+                            </div>
+                          )}
+                          <img 
+                            key={qrRetry}
+                            src={`https://img.vietqr.io/image/MOMO-${data.bankInfo?.accountNumber}-qr_only.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo?.accountHolder || '')}&t=${qrRetry}`}
+                            alt="MoMo QR"
+                            onLoad={() => setQrStatus('success')}
+                            onError={() => setQrStatus('error')}
+                            className={`w-full h-auto rounded-xl transition-opacity duration-300 ${qrStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
+                          />
                         </div>
                       </div>
                       <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
