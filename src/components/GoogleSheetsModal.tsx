@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import { GoogleConfig } from '@/lib/google-sheets';
-import { Settings, Info, ExternalLink, Save, CheckCircle, Lock, ShieldCheck, Eye, EyeOff, CreditCard } from 'lucide-react';
+import { Settings, Info, ExternalLink, Save, CheckCircle, Lock, ShieldCheck, Eye, EyeOff, CreditCard, Copy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { updateBankInfo, loadData } from '@/lib/storage';
 import { BankInfo } from '@/types';
+import { toast } from 'react-toastify';
 
 interface GoogleSheetsModalProps {
   isOpen: boolean;
@@ -153,7 +154,7 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-sm font-medium text-slate-400">Spreadsheet ID *</label>
               <a 
-                href="https://docs.google.com/spreadsheets/d/1r6cuTPfHD7-YQo4FMnbl-SWoR_RbqtkG0N7fzy_Pf8s/edit" 
+                href={config.spreadsheetId ? `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit` : 'https://docs.google.com/spreadsheets'} 
                 target="_blank" 
                 rel="noreferrer"
                 className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
@@ -170,6 +171,37 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
               className="input w-full font-mono text-sm"
             />
           </div>
+
+          {config.spreadsheetId && (
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mt-2">
+              <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <ExternalLink size={12} /> Link tra cứu cho thành viên
+              </p>
+              <div className="flex gap-2">
+                <input 
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/member?id=${config.spreadsheetId}`}
+                  className="bg-slate-900/50 border border-white/5 rounded-lg text-[11px] px-3 py-2 flex-1 font-mono text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = `${window.location.origin}/member?id=${config.spreadsheetId}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success('Đã copy link chia sẻ!');
+                  }}
+                  className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-all"
+                  title="Copy Link"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+              <p className="text-[9px] text-slate-500 mt-2 leading-relaxed">
+                * Gửi link này cho thành viên để họ thấy dữ liệu mới nhất. <br/>
+                * <strong>Lưu ý:</strong> Để các máy khác xem được, bạn cần cấu hình GOOGLE_CLIENT_EMAIL và GOOGLE_PRIVATE_KEY trên Vercel.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 pt-2">

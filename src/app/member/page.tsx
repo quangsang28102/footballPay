@@ -1,34 +1,78 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { loadData } from '@/lib/storage';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { loadData, saveData } from '@/lib/storage';
 import { AppData, Player, Match, Payment } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { Search, User, Calendar, DollarSign, ArrowLeft, Trophy, Clock, CheckCircle2, AlertCircle, LogIn, CreditCard, Copy, Check, Info, QrCode } from 'lucide-react';
+import { 
+  Search, 
+  Calendar, 
+  DollarSign, 
+  ArrowLeft, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  LogIn, 
+  CreditCard, 
+  Copy, 
+  Check, 
+  QrCode, 
+  RefreshCw,
+  ChevronRight
+} from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { BankInfo } from '@/types';
+import { toast } from 'react-toastify';
 
-export default function MemberViewPage() {
+function MemberViewContent() {
   const { isAdmin } = useAuth();
+  const searchParams = useSearchParams();
+  const cloudId = searchParams.get('id');
   const [data, setData] = useState<AppData>({ players: [], matches: [], payments: [] });
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setData(loadData());
-  }, []);
+    const localData = loadData();
+    setData(localData);
+
+    const fetchCloudData = async (id: string) => {
+      setIsSyncing(true);
+      try {
+        const res = await fetch(`/api/sync-sheet?id=${id}`);
+        if (res.ok) {
+          const cloudData = await res.json();
+          setData(cloudData);
+          saveData(cloudData); // Persist
+          toast.success('Đã đồng bộ dữ liệu mới nhất!');
+        } else {
+          const err = await res.json();
+          if (!err.error?.includes('Server not configured')) {
+            toast.error('Lỗi tải dữ liệu: ' + err.error);
+          }
+        }
+      } catch (e) {
+        console.error('Fetch error:', e);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
+    if (cloudId) {
+      fetchCloudData(cloudId);
+    }
+  }, [cloudId]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  // ... rest of useMemo for players and playerStats ...
 
   const players = useMemo(() => {
     return [...data.players].sort((a, b) => a.name.localeCompare(b.name));
@@ -43,22 +87,22 @@ export default function MemberViewPage() {
   const playerStats = useMemo(() => {
     if (!selectedPlayerId) return null;
     
-    const player = data.players.find(p => p.id === selectedPlayerId);
+    const player = data.players.find((p: Player) => p.id === selectedPlayerId);
     if (!player) return null;
 
-    const playerPayments = data.payments.filter(p => p.playerId === selectedPlayerId);
-    const totalOwed = playerPayments.reduce((sum, p) => sum + p.amountOwed, 0);
-    const totalPaid = playerPayments.reduce((sum, p) => sum + p.amountPaid, 0);
+    const playerPayments = data.payments.filter((p: Payment) => p.playerId === selectedPlayerId);
+    const totalOwed = playerPayments.reduce((sum: number, p: Payment) => sum + p.amountOwed, 0);
+    const totalPaid = playerPayments.reduce((sum: number, p: Payment) => sum + p.amountPaid, 0);
     const debt = totalOwed - totalPaid;
 
-    const matchHistory = playerPayments.map(p => {
-      const match = data.matches.find(m => m.id === p.matchId);
+    const matchHistory = playerPayments.map((p: Payment) => {
+      const match = data.matches.find((m: Match) => m.id === p.matchId);
       return {
         ...p,
         match,
         status: p.amountPaid >= p.amountOwed ? 'paid' : p.amountPaid > 0 ? 'partial' : 'unpaid'
       };
-    }).sort((a, b) => {
+    }).sort((a: any, b: any) => {
       const dateA = a.match?.date || '';
       const dateB = b.match?.date || '';
       return dateB.localeCompare(dateA);
@@ -96,9 +140,16 @@ export default function MemberViewPage() {
             <div className="w-10 h-10 flex items-center justify-center">
               <img src="https://assets.manutd.com/AssetPicker/images/0/0/3/2/197240/Header-Logo1500994616801.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-               Tra cứu thành viên
-            </h1>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                 Tra cứu thành viên
+              </h1>
+              {isSyncing && (
+                <div className="flex items-center gap-1.5 text-[9px] text-indigo-400 uppercase tracking-widest font-bold">
+                  <RefreshCw size={10} className="animate-spin" /> Đang cập nhật...
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {isAdmin ? (
@@ -114,12 +165,13 @@ export default function MemberViewPage() {
         </header>
 
         <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main Content */}
           <div className="flex-1 min-w-0">
             {!selectedPlayerId ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center mb-10">
                   <h2 className="text-3xl font-bold mb-3 uppercase tracking-tight">Chào mừng bạn!</h2>
-                  <p className="text-slate-400">Chọn tên của bạn để xem thống kê và các khoản cần thanh toán.</p>
+                  <p className="text-slate-400 font-medium">Chọn tên của bạn để xem thống kê và các khoản cần thanh toán.</p>
                 </div>
 
                 {/* Search */}
@@ -144,13 +196,14 @@ export default function MemberViewPage() {
                       onClick={() => setSelectedPlayerId(player.id)}
                       className="glass-card p-4 hover:border-indigo-500/50 hover:bg-white/5 transition-all text-left flex items-center gap-4 group"
                     >
-                      <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 font-bold text-lg group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                      <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 font-bold text-lg group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-lg">
                         {player.name[0]}
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{player.name}</p>
-                        {player.nickname && <p className="text-xs text-slate-500 truncate">"{player.nickname}"</p>}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-100 truncate">{player.name}</p>
+                        {player.nickname && <p className="text-xs text-indigo-400 italic font-medium truncate">"{player.nickname}"</p>}
                       </div>
+                      <ChevronRight size={18} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
                     </button>
                   ))}
                   {filteredPlayers.length === 0 && (
@@ -165,7 +218,7 @@ export default function MemberViewPage() {
                 {/* Back Button */}
                 <button 
                   onClick={() => setSelectedPlayerId(null)}
-                  className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors mb-4"
+                  className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-4"
                 >
                   <ArrowLeft size={18} /> Chọn người khác
                 </button>
@@ -215,8 +268,8 @@ export default function MemberViewPage() {
                 {/* Detailed Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="glass-card p-6">
-                    <h3 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                      <DollarSign size={16} /> Tóm tắt tài chính
+                    <h3 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider font-bold">
+                      <DollarSign size={16} className="text-indigo-400" /> Tóm tắt tài chính
                     </h3>
                     <div className="space-y-4">
                       <div className="flex justify-between items-center py-2 border-b border-white/5">
@@ -228,166 +281,105 @@ export default function MemberViewPage() {
                         <span className="font-semibold text-lg text-emerald-400">{formatCurrency(playerStats?.totalPaid || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center py-3">
-                        <span className="text-slate-200 font-bold">Còn phải trả</span>
+                        <span className="text-slate-200 font-bold">Còn nợ</span>
                         <span className="font-black text-2xl text-amber-500">{formatCurrency(playerStats?.debt || 0)}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="glass-card p-6 bg-indigo-500/5">
-                    <h3 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                       👋 Lưu ý
+                    <h3 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider font-bold">
+                       <Clock size={16} className="text-indigo-400" /> Lịch sử trận đấu
                     </h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">
-                      Thông tin trên được cập nhật bởi Admin sau mỗi trận đấu. Nếu có sai sót về số tiền hoặc lịch sử thanh toán, vui lòng liên hệ Admin để được điều chỉnh kịp thời.
-                    </p>
-                    <div className="mt-6 flex items-center justify-center p-4 rounded-xl bg-white/5 border border-dashed border-white/10">
-                       <p className="text-xs text-slate-500 text-center uppercase tracking-[0.2em]">Cảm ơn bạn đã tham gia!</p>
+                    <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                      {playerStats?.history.map((record: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-3 border-b border-white/5 last:border-0">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-100">{record.match?.location}</span>
+                            <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">{record.match ? formatDate(record.match.date) : ''}</span>
+                          </div>
+                          <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter ${
+                            record.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                            record.status === 'partial' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}>
+                            {record.status === 'paid' ? 'Đã trả' : record.status === 'partial' ? 'Nợ' : 'Chưa trả'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                </div>
-
-                {/* Match History Table */}
-                <div className="glass-card overflow-hidden">
-                  <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center bg-white/5">
-                     <h3 className="font-bold flex items-center gap-2 italic">
-                       LỊCH SỬ TRẬN ĐẤU
-                     </h3>
-                     <span className="text-xs text-slate-500">Mô tả chi tiết từng trận</span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="bg-slate-900/50">
-                          <th className="px-6 py-3 text-xs font-semibold text-slate-400 uppercase">Ngày</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-slate-400 uppercase">Địa điểm</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-slate-400 uppercase">Tiền sân</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-slate-400 uppercase text-center">Trạng thái</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {playerStats?.history.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-white/5 transition-colors group">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                 <Clock size={14} className="text-slate-500" />
-                                 <span className="font-medium">{item.match ? formatDate(item.match.date) : 'N/A'}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-slate-400 text-sm">{item.match?.location}</span>
-                            </td>
-                            <td className="px-6 py-4 font-bold text-slate-200">
-                              {formatCurrency(item.amountOwed)}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex justify-center">
-                                {item.status === 'paid' ? (
-                                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold ring-1 ring-emerald-500/20">
-                                    <CheckCircle2 size={12} /> Đã trả
-                                  </div>
-                                ) : item.status === 'partial' ? (
-                                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold ring-1 ring-amber-500/20">
-                                    <Clock size={12} /> Một phần
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 text-xs font-bold ring-1 ring-red-500/20">
-                                    <AlertCircle size={12} /> Chưa trả
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Sidebar - Bank Info (Only show if debt exists) */}
+          {/* Sidebar Info (Selected Player) */}
           {selectedPlayerId && playerStats && playerStats.debt > 0 && (
-            <aside className="w-full lg:w-80 shrink-0 animate-in fade-in slide-in-from-right-4 duration-500">
-               <div className="glass-card p-6 sticky top-8 bg-white/5 border-white/10 overflow-hidden group">
-                  <div className="absolute -top-4 -right-4 w-24 h-24 bg-emerald-500/10 blur-2xl rounded-full group-hover:bg-emerald-500/20 transition-all duration-700" />
-                  <h3 className="text-sm font-bold text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-[0.15em]">
-                    <CreditCard className="text-emerald-400" size={18} /> Chuyển khoản
-                  </h3>
-                  {data.bankInfo && data.bankInfo.accountNumber ? (
-                    <div className="space-y-6">
-                      {/* MoMo QR Section (Moved to Top) */}
-                      {playerStats && playerStats.debt > 0 && (
-                        <div className="animate-in fade-in zoom-in duration-700">
-                          <div className="bg-white p-3 rounded-2xl shadow-xl shadow-fuchsia-500/10 mb-3 relative group/qr overflow-hidden flex items-center justify-center">
-                             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
-                             
-                             {/* QR Image */}
-                             <img 
-                               src={`https://quickchart.io/qr?text=${encodeURIComponent(
-                                 "00020101021138630010A000000727013300069710250119PSP26016186000003150208QRIBFTTA5303704" + 
-                                 `54${Math.round(playerStats.debt).toString().length.toString().padStart(2, '0')}${Math.round(playerStats.debt)}` + 
-                                 "5802VN62190515MOMOW2W531158686304633A"
-                               )}&size=300&margin=1`}
-                               alt="MoMo QR Code"
-                               className="w-full aspect-square rounded-xl relative z-10"
-                             />
+            <aside className="w-full lg:w-80 animate-in slide-in-from-right-4 duration-500 flex-shrink-0">
+               <div className="glass-card p-6 sticky top-8 space-y-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard size={20} className="text-emerald-400" />
+                    <h2 className="text-xl font-bold uppercase tracking-tight">Thanh toán</h2>
+                  </div>
 
-                             {/* Center Logo Overlay */}
-                             <div className="absolute z-20 w-12 h-12 bg-white rounded-xl p-1.5 shadow-lg border border-slate-100 flex items-center justify-center">
-                                <img 
-                                  src="https://homepage.momocdn.net/fileuploads/svg/momo-file-240411162904.svg" 
-                                  alt="MoMo Logo"
-                                  className="w-full h-full object-contain"
-                                />
-                             </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 mb-6">
-                             <QrCode size={14} className="text-fuchsia-400" />
-                             <span className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Quét MoMo để trả nhanh</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-3 mb-6">
-                            <div className="h-px flex-1 bg-white/5"></div>
-                            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Hoặc chuyển khoản</span>
-                            <div className="h-px flex-1 bg-white/5"></div>
-                          </div>
+                  <div className="space-y-6">
+                    <div className="animate-in fade-in zoom-in duration-700">
+                      <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-500/10 mb-4 relative flex items-center justify-center overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
+                        <img 
+                          src={`https://api.vietqr.io/momo/v1/generate?accountName=${encodeURIComponent(data.bankInfo?.accountHolder || 'Admin')}&accountNumber=${data.bankInfo?.accountNumber || ''}&amount=${Math.round(playerStats.debt)}&addLogo=1`}
+                          alt="MoMo QR"
+                          className="w-full h-auto rounded-xl relative z-10"
+                        />
+                        <div className="absolute z-20 w-10 h-10 bg-white rounded-lg p-1 shadow-lg border border-slate-100 flex items-center justify-center">
+                           <img 
+                             src="https://homepage.momocdn.net/fileuploads/svg/momo-file-240411162904.svg" 
+                             alt="MoMo Logo"
+                             className="w-full h-full object-contain"
+                           />
                         </div>
-                      )}
+                      </div>
+                      <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
+                          <QrCode size={14} className="text-fuchsia-400" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Quét MoMo để trả nhanh</span>
+                       </div>
+                       
+                       <div className="flex items-center gap-3 mb-6">
+                         <div className="h-px flex-1 bg-white/5"></div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Hoặc chuyển khoản</span>
+                         <div className="h-px flex-1 bg-white/5"></div>
+                       </div>
+                    </div>
 
-                      <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5">
-                         <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Ngân hàng</p>
-                         <p className="text-xl font-black text-white">{data.bankInfo.accountNumber ? data.bankInfo.bankName : 'N/A'}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5">
-                         <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Số tài khoản</p>
-                         <div className="flex items-center justify-between">
-                            <p className="text-2xl font-mono font-black text-emerald-400 tracking-wider">
-                              {data.bankInfo.accountNumber}
-                            </p>
-                            <button 
-                              onClick={() => handleCopy(data.bankInfo?.accountNumber || '')}
-                              className="p-2 hover:bg-white/10 rounded-lg transition-all text-slate-400 hover:text-white"
-                            >
-                              {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
-                            </button>
-                         </div>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5">
-                         <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Chủ tài khoản</p>
-                         <p className="text-lg font-black text-slate-200 uppercase tracking-tight">
-                           {data.bankInfo.accountHolder}
-                         </p>
-                      </div>
+                    <div className="space-y-3">
+                       <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5">
+                          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Ngân hàng</p>
+                          <p className="text-lg font-black text-white">{data.bankInfo?.bankName || 'Chưa cập nhật'}</p>
+                       </div>
+                       <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5">
+                          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Số tài khoản</p>
+                          <div className="flex items-center justify-between">
+                             <p className="text-xl font-mono font-black text-emerald-400 tracking-wider">
+                               {data.bankInfo?.accountNumber || '---'}
+                             </p>
+                             {data.bankInfo?.accountNumber && (
+                               <button 
+                                 onClick={() => handleCopy(data.bankInfo!.accountNumber)}
+                                 className="p-2 hover:bg-white/10 rounded-lg transition-all text-slate-400 hover:text-white"
+                               >
+                                 {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
+                               </button>
+                             )}
+                          </div>
+                       </div>
+                       <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5">
+                          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Chủ tài khoản</p>
+                          <p className="text-md font-black text-slate-200 uppercase tracking-tight">
+                            {data.bankInfo?.accountHolder || '---'}
+                          </p>
+                       </div>
                     </div>
-                  ) : (
-                    <div className="py-12 text-center text-slate-500 space-y-3">
-                       <AlertCircle className="mx-auto text-slate-600" size={32} />
-                       <p className="text-xs">Chưa có thông tin nhận tiền</p>
-                    </div>
-                  )}
+                  </div>
                </div>
             </aside>
           )}
@@ -401,5 +393,20 @@ export default function MemberViewPage() {
         </footer>
       </div>
     </div>
+  );
+}
+
+export default function MemberViewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw size={32} className="text-indigo-500 animate-spin" />
+          <p className="text-slate-400 animate-pulse uppercase tracking-[0.2em] text-xs font-black">Sân cỏ đang tải...</p>
+        </div>
+      </div>
+    }>
+      <MemberViewContent />
+    </Suspense>
   );
 }
