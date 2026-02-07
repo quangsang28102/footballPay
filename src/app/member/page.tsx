@@ -351,17 +351,19 @@ function MemberViewContent() {
                           )}
                           <img 
                             key={qrRetry}
-                            src={`https://img.vietqr.io/image/MOMO-${data.bankInfo?.accountNumber}-qr_only.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo?.accountHolder || '')}&t=${qrRetry}`}
-                            alt="MoMo QR"
+                            src={`https://img.vietqr.io/image/${data.bankInfo?.bankName || 'MOMO'}-${data.bankInfo?.accountNumber}-qr_only.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo?.accountHolder || '')}&t=${qrRetry}`}
+                            alt="Payment QR"
                             onLoad={() => setQrStatus('success')}
                             onError={() => setQrStatus('error')}
                             className={`w-full h-auto rounded-xl transition-opacity duration-300 ${qrStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
                           />
                         </div>
                       </div>
-                      <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
-                          <QrCode size={14} className="text-fuchsia-400" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Quét MoMo để trả nhanh</span>
+                       <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
+                          <QrCode size={14} className="text-indigo-400" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                            Quét {data.bankInfo?.bankName === 'MOMO' ? 'MoMo' : data.bankInfo?.bankName === 'ZALOPAY' ? 'ZaloPay' : 'mã QR'} để trả nhanh
+                          </span>
                        </div>
                        
                        <div className="flex items-center gap-3 mb-6">

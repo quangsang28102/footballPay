@@ -9,6 +9,22 @@ import { updateBankInfo, loadData } from '@/lib/storage';
 import { BankInfo } from '@/types';
 import { toast } from 'react-toastify';
 
+const BANK_LIST = [
+  { id: 'MOMO', name: 'Ví MoMo' },
+  { id: 'VCB', name: 'Vietcombank' },
+  { id: 'ICB', name: 'VietinBank' },
+  { id: 'BIDV', name: 'BIDV' },
+  { id: 'MB', name: 'MB Bank' },
+  { id: 'ACB', name: 'ACB' },
+  { id: 'VPB', name: 'VPBank' },
+  { id: 'TPB', name: 'TPBank' },
+  { id: 'TCB', name: 'Techcombank' },
+  { id: 'VIB', name: 'VIB' },
+  { id: 'STB', name: 'Sacombank' },
+  { id: 'LPB', name: 'LienVietPostBank' },
+  { id: 'ZALOPAY', name: 'Ví ZaloPay' },
+];
+
 interface GoogleSheetsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -94,13 +110,16 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
                 <CreditCard size={18} className="text-emerald-400" /> Thông tin bank
               </h2>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Ngân hàng (VD: MB Bank)"
+                <select
                   value={bankInfo.bankName}
                   onChange={e => setBankInfo({ ...bankInfo, bankName: e.target.value })}
-                  className="input w-full text-sm h-10"
-                />
+                  className="input w-full text-sm h-10 bg-[#1e293b] border-white/10"
+                >
+                  <option value="">-- Chọn ngân hàng --</option>
+                  {BANK_LIST.map(bank => (
+                    <option key={bank.id} value={bank.id}>{bank.name}</option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   placeholder="Số tài khoản"
