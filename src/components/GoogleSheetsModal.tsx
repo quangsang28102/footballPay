@@ -34,6 +34,8 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
   /* eslint-disable @typescript-eslint/no-unused-vars */
   const { getRawPin } = useAuth(); // kept for interface compatibility if needed, but unused
   const [config, setConfig] = useState<GoogleConfig>(initialConfig);
+  const [newPin, setNewPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [bankInfo, setBankInfo] = useState<BankInfo>({
     bankName: '',
     accountNumber: '',
@@ -53,7 +55,28 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(config);
-    updateBankInfo(bankInfo);
+    
+    // Save bank info AND admin password to local data structure
+    // (which will then be synced to Google Sheet via the Sidebar's sync logic if triggered, 
+    // or we might need to trigger a sync right here? 
+    // Actually Modal calls onSave, and Sidebar calls handleSaveGoogleConfig.
+    // Sidebar does NOT autosync on save config.
+    // So we update the local store:
+    const currentData = loadData();
+    if (newPin && newPin.length >= 4) {
+        currentData.adminPassword = newPin;
+        toast.info('Đã cập nhật mật khẩu Admin mới (cần Sync để áp dụng)');
+    }
+    currentData.bankInfo = bankInfo;
+    // We need to save this modified data back
+    // Import saveData from storage is needed? Yes it is imported.
+    // Wait, `loadData` returns a copy or reference? It returns object.
+    // We need to write it back.
+    // Let's import saveData properly.
+    const { saveData } = require('@/lib/storage'); 
+    saveData(currentData);
+    
+    updateBankInfo(bankInfo); // This function only updates bankInfo part of storage, redundant if we full save above but safe.
     onClose();
   };
 
@@ -64,22 +87,36 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
         {/* Admin Security & Bank Section (Top) */}
         <div className="pb-6 border-b border-white/10 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* PIN Settings - NOW MANAGED VIA ENV VAR */}
+            {/* PIN Settings */}
             <div>
               <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2 uppercase tracking-wider">
                 <ShieldCheck size={18} className="text-indigo-400" /> Bảo mật Admin
               </h2>
-              <div className="bg-slate-900/50 border border-white/5 rounded-xl p-4">
-                <p className="text-xs text-slate-400 leading-relaxed mb-2">
-                  Để đảm bảo bảo mật đồng bộ trên mọi thiết bị, mật khẩu Admin hiện được quản lý qua <strong>Biến môi trường (Environment Variables)</strong>.
-                </p>
-                <div className="bg-black/30 rounded p-2 font-mono text-[10px] text-emerald-400 border border-white/5 break-all">
-                  ADMIN_PASSWORD = ******
-                </div>
-                <p className="mt-2 text-[10px] text-slate-500 italic">
-                  * Vui lòng truy cập Vercel &gt; Settings &gt; Environment Variables để thay đổi mật khẩu.
-                </p>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Mã PIN mới (4 số)</label>
+              <div className="relative group">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newPin}
+                  onChange={e => setNewPin(e.target.value)}
+                  className="input w-full pl-10 pr-10 font-mono tracking-widest addPaddingLeft"
+                  placeholder="Để trống nếu không đổi"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  title={showPin ? "Ẩn mã PIN" : "Hiện mã PIN"}
+                >
+                  {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+              <p className="mt-1 text-[10px] text-slate-500 italic">
+                 Dùng để đăng nhập Admin. Lưu vào Google Sheet.
+              </p>
             </div>
 
             {/* Bank Settings */}

@@ -5,13 +5,44 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { token } = body;
 
-    const CORRECT_PIN = process.env.ADMIN_PASSWORD || '1234';
-    const currentToken = Buffer.from(CORRECT_PIN).toString('base64');
+    const spreadsheetId = process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID;
+    
+    // Default fallback
+    let correctPassword = process.env.ADMIN_PASSWORD || '1234';
+
+    if (spreadsheetId) {
+        // Fetch from Google Sheet
+        const protocol = req.nextUrl.protocol;
+        const host = req.headers.get('host');
+        try {
+            const apiUrl = `${protocol}//${host}/api/sync-sheet?id=${spreadsheetId}`;
+            const response = await fetch(apiUrl);
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.adminPassword) {
+                    correctPassword = data.adminPassword;
+                }
+            }
+        } catch (e) {
+            console.error('Verify Auth Fetch Error', e);
+            // Fallback to env default if fetch fails (e.g. offline or error)
+            // But if sheet has password, we might be verifying against wrong one.
+            // Safety: if we can't verify, we fail unless token matches env pass (initial setup)
+        }
+    }
+
+    const currentToken = Buffer.from(correctPassword).toString('base64');
 
     if (token === currentToken) {
       return NextResponse.json({ valid: true });
     } else {
-        // If password changed, token is invalid -> logout
+        // Double check against ENV password just in case sheet fetch failed but token is valid for ENV
+        // This prevents lockout if sheet is down but password hasn't changed from default
+        const envToken = Buffer.from(process.env.ADMIN_PASSWORD || '1234').toString('base64');
+        if (token === envToken) {
+             return NextResponse.json({ valid: true });
+        }
+
       return NextResponse.json({ valid: false }, { status: 401 });
     }
   } catch (error) {

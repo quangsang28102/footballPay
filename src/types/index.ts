@@ -46,6 +46,7 @@ export interface AppData {
   matches: Match[];
   payments: Payment[];
   bankInfo?: BankInfo;
+  adminPassword?: string;
 }
 
 export type PaymentStatus = 'paid' | 'unpaid' | 'partial';
