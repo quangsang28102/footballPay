@@ -39,23 +39,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
     }
 
-    // --- 1. ENSURE SHEETS EXIST ---
+    // --- 1. ENSURE SHEETS EXIST AND ARE CONFIGURED ---
     const sheetNames = ['_APP_DATA_', 'Payments', 'Thống kê'];
     const metadata = await sheets.spreadsheets.get({ spreadsheetId });
-    const existingSheets = metadata.data.sheets?.map(s => s.properties?.title) || [];
+    const existingSheets = metadata.data.sheets || [];
+    
+    // Find _APP_DATA_ sheet to check customized properties
+    const appDataSheet = existingSheets.find(s => s.properties?.title === '_APP_DATA_');
     
     const requests: any[] = [];
+    
+    // Create missing sheets
     for (const name of sheetNames) {
-      if (!existingSheets.includes(name)) {
-        requests.push({ addSheet: { properties: { title: name } } });
+      if (!existingSheets.some(s => s.properties?.title === name)) {
+        // If creating _APP_DATA_, make it hidden by default
+        if (name === '_APP_DATA_') {
+            requests.push({ addSheet: { properties: { title: name, hidden: true } } });
+        } else {
+            requests.push({ addSheet: { properties: { title: name } } });
+        }
       }
+    }
+    
+    // Ensure _APP_DATA_ is hidden if it exists but is visible
+    if (appDataSheet && !appDataSheet.properties?.hidden) {
+        requests.push({
+            updateSheetProperties: {
+                properties: {
+                    sheetId: appDataSheet.properties?.sheetId,
+                    hidden: true
+                },
+                fields: 'hidden'
+            }
+        });
     }
 
     if (requests.length > 0) {
       await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
     }
 
-    // Re-fetch metadata to get correct sheet IDs after creating new sheets
+    // Re-fetch metadata to get correct sheet IDs
     const updatedMetadata = await sheets.spreadsheets.get({ spreadsheetId });
 
     const formatCurrency = (value: number) => {

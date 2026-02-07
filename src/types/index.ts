@@ -46,7 +46,9 @@ export interface AppData {
   matches: Match[];
   payments: Payment[];
   bankInfo?: BankInfo;
-  adminPassword?: string;
+  adminPasswordHash?: string;
+  // Deprecated but might exist in old data
+  adminPassword?: string;  // We'll migrate this to hash if needed
 }
 
 export type PaymentStatus = 'paid' | 'unpaid' | 'partial';

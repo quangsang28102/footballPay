@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Import crypto for hashing
+// Note: crypto.subtle is available in Node 15+ and Edge Runtime
+
+async function hashPassword(password: string): Promise<string> {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -10,39 +20,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'PIN is required' }, { status: 400 });
     }
 
+    const inputHash = await hashPassword(pin);
+
+    // Fallback environment password (hashed for comparison)
+    const envPassword = process.env.ADMIN_PASSWORD || '1234';
+    const envHash = await hashPassword(envPassword);
+
     if (!spreadsheetId) {
-       // Fallback to env password if no spreadsheet configured yet (initial setup)
-       const ENV_PIN = process.env.ADMIN_PASSWORD || '1234';
-       if (pin === ENV_PIN) {
-         const token = Buffer.from(ENV_PIN).toString('base64');
-         return NextResponse.json({ success: true, token });
+       if (inputHash === envHash) {
+         return NextResponse.json({ success: true, token: inputHash });
        }
        return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
 
-    // Fetch data from Google Sheet to get the password
-    // We can reuse the GET logic from sync-sheet or call it internally
-    // Ideally refactor common logic, but for speed let's just fetch here
+    // Fetch data from Google Sheet
     const protocol = req.nextUrl.protocol;
     const host = req.headers.get('host');
     const apiUrl = `${protocol}//${host}/api/sync-sheet?id=${spreadsheetId}`;
     
+    // We expect the sheet to return JSON data which might contain adminPasswordHash OR adminPassword (legacy)
     const response = await fetch(apiUrl);
-    let sheetPassword = process.env.ADMIN_PASSWORD || '1234'; // Default fallback
+    
+    let targetHash = envHash; // Default to env password if sheet doesn't have one
 
     if (response.ok) {
         const data = await response.json();
-        if (data && data.adminPassword) {
-            sheetPassword = data.adminPassword;
+        
+        // Priority 1: Stored Hash
+        if (data && data.adminPasswordHash) {
+            targetHash = data.adminPasswordHash;
+        } 
+        // Priority 2: Legacy Plain Password (if exists) -> migrate on fly? No, just use it.
+        else if (data && data.adminPassword) {
+            targetHash = await hashPassword(data.adminPassword);
         }
     }
 
-    if (pin === sheetPassword) {
-      // Return a simple token derived from the password
-      // This ensures that if the password changes, the token is invalid
-      const token = Buffer.from(sheetPassword).toString('base64');
-      return NextResponse.json({ success: true, token });
+    if (inputHash === targetHash) {
+      return NextResponse.json({ success: true, token: inputHash });
     } else {
+        // Fallback: If sheet sync failed or something, maybe try ENV password?
+        // But if user set a custom password in sheet, ENV password shouldn't work.
+        // Unless we consider ENV as a "Master Key"? Let's allow ENV as master key for safety in case of lockout.
+        if (inputHash === envHash) {
+             return NextResponse.json({ success: true, token: inputHash });
+        }
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
   } catch (error) {

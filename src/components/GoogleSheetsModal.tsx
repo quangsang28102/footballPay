@@ -52,31 +52,40 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
     }
   }, [initialConfig, getRawPin, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Import dynamically or define helper
+  const hashPassword = async (password: string) => {
+    const msgUint8 = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     onSave(config);
     
-    // Save bank info AND admin password to local data structure
-    // (which will then be synced to Google Sheet via the Sidebar's sync logic if triggered, 
-    // or we might need to trigger a sync right here? 
-    // Actually Modal calls onSave, and Sidebar calls handleSaveGoogleConfig.
-    // Sidebar does NOT autosync on save config.
-    // So we update the local store:
     const currentData = loadData();
     if (newPin && newPin.length >= 4) {
-        currentData.adminPassword = newPin;
-        toast.info('Đã cập nhật mật khẩu Admin mới (cần Sync để áp dụng)');
+        // Hash the password before saving
+        try {
+            const hashedPassword = await hashPassword(newPin);
+            currentData.adminPasswordHash = hashedPassword;
+            // Clear legacy password if exists
+            delete currentData.adminPassword;
+            toast.info('Đã cập nhật mật khẩu Admin mới (cần Sync để áp dụng)');
+        } catch (error) {
+            console.error("Hashing failed", error);
+            toast.error("Lỗi mã hóa mật khẩu");
+            return;
+        }
     }
+    
     currentData.bankInfo = bankInfo;
-    // We need to save this modified data back
-    // Import saveData from storage is needed? Yes it is imported.
-    // Wait, `loadData` returns a copy or reference? It returns object.
-    // We need to write it back.
-    // Let's import saveData properly.
+    
     const { saveData } = require('@/lib/storage'); 
     saveData(currentData);
     
-    updateBankInfo(bankInfo); // This function only updates bankInfo part of storage, redundant if we full save above but safe.
+    updateBankInfo(bankInfo); 
     onClose();
   };
 

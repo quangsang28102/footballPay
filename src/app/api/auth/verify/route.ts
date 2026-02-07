@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Hashing utility (duplicated to keep file self-contained or import if possible, but importing in API routes can be tricky with path aliases sometimes)
+async function hashPassword(password: string): Promise<string> {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { token } = body;
+    const { token } = body; // Token is now the SHA-256 of the password
 
     const spreadsheetId = process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID;
     
-    // Default fallback
-    let correctPassword = process.env.ADMIN_PASSWORD || '1234';
+    const envPassword = process.env.ADMIN_PASSWORD || '1234';
+    const envHash = await hashPassword(envPassword);
+    
+    let targetHash = envHash;
 
     if (spreadsheetId) {
-        // Fetch from Google Sheet
         const protocol = req.nextUrl.protocol;
         const host = req.headers.get('host');
         try {
@@ -19,27 +28,27 @@ export async function POST(req: NextRequest) {
             const response = await fetch(apiUrl);
             if (response.ok) {
                 const data = await response.json();
-                if (data && data.adminPassword) {
-                    correctPassword = data.adminPassword;
+                if (data && data.adminPasswordHash) {
+                    targetHash = data.adminPasswordHash;
+                } else if (data && data.adminPassword) {
+                    targetHash = await hashPassword(data.adminPassword);
                 }
             }
         } catch (e) {
             console.error('Verify Auth Fetch Error', e);
-            // Fallback to env default if fetch fails (e.g. offline or error)
-            // But if sheet has password, we might be verifying against wrong one.
-            // Safety: if we can't verify, we fail unless token matches env pass (initial setup)
         }
     }
 
-    const currentToken = Buffer.from(correctPassword).toString('base64');
-
-    if (token === currentToken) {
+    // Logic: verify if the provided token matches the current correct hash
+    // The client sends the token which IS the hash of the password they logged in with.
+    // If we changed the password on the server, targetHash changes.
+    // So stored token (old hash) != targetHash (new hash) -> Invalid -> Logout.
+    
+    if (token === targetHash) {
       return NextResponse.json({ valid: true });
     } else {
-        // Double check against ENV password just in case sheet fetch failed but token is valid for ENV
-        // This prevents lockout if sheet is down but password hasn't changed from default
-        const envToken = Buffer.from(process.env.ADMIN_PASSWORD || '1234').toString('base64');
-        if (token === envToken) {
+        // Allow fallback to ENV password if mismatched (e.g. sheet fetch failed but ENV is valid)
+        if (token === envHash) {
              return NextResponse.json({ valid: true });
         }
 
