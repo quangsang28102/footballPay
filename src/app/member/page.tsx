@@ -37,6 +37,8 @@ function MemberViewContent() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [qrStatus, setQrStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [qrRetry, setQrRetry] = useState(0);
+  const [bankQrStatus, setBankQrStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [bankQrRetry, setBankQrRetry] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -325,46 +327,92 @@ function MemberViewContent() {
                   </div>
 
                   <div className="space-y-6">
-                    <div className="animate-in fade-in zoom-in duration-700">
-                      <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-500/10 mb-4 relative flex items-center justify-center overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
-                        <div className="relative z-10 w-full aspect-square flex items-center justify-center">
-                          {qrStatus === 'loading' && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 rounded-xl z-20">
-                              <RefreshCw size={24} className="text-indigo-500 animate-spin" />
-                            </div>
-                          )}
-                          {qrStatus === 'error' && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/90 rounded-xl z-20 p-4 text-center">
-                              <AlertCircle size={32} className="text-red-500 mb-2" />
-                              <p className="text-[10px] text-slate-800 font-bold mb-3">Lỗi tải mã QR</p>
-                              <button 
-                                onClick={() => {
-                                  setQrStatus('loading');
-                                  setQrRetry(prev => prev + 1);
-                                }}
-                                className="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold hover:bg-indigo-700 transition-colors shadow-lg"
-                              >
-                                Thử lại
-                              </button>
-                            </div>
-                          )}
-                          <img 
-                            key={qrRetry}
-                            src={`https://img.vietqr.io/image/${data.bankInfo?.bankName || 'MOMO'}-${data.bankInfo?.accountNumber}-qr_only.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo?.accountHolder || '')}&t=${qrRetry}`}
-                            alt="Payment QR"
-                            onLoad={() => setQrStatus('success')}
-                            onError={() => setQrStatus('error')}
-                            className={`w-full h-auto rounded-xl transition-opacity duration-300 ${qrStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
-                          />
+                   <div className="space-y-6">
+                    {/* MoMo QR */}
+                    {data.bankInfo?.momoNumber && (
+                      <div className="animate-in fade-in zoom-in duration-700">
+                        <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-500/10 mb-4 relative flex items-center justify-center overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
+                          <div className="relative z-10 w-full aspect-square flex items-center justify-center">
+                            {qrStatus === 'loading' && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 rounded-xl z-20">
+                                <RefreshCw size={24} className="text-indigo-500 animate-spin" />
+                              </div>
+                            )}
+                            {qrStatus === 'error' && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/90 rounded-xl z-20 p-4 text-center">
+                                <AlertCircle size={32} className="text-red-500 mb-2" />
+                                <p className="text-[10px] text-slate-800 font-bold mb-3">Lỗi tải mã MoMo</p>
+                                <button 
+                                  onClick={() => {
+                                    setQrStatus('loading');
+                                    setQrRetry(prev => prev + 1);
+                                  }}
+                                  className="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold hover:bg-indigo-700 transition-colors shadow-lg"
+                                >
+                                  Thử lại
+                                </button>
+                              </div>
+                            )}
+                            <img 
+                              key={`momo-${qrRetry}`}
+                              src={`https://img.vietqr.io/image/MOMO-${data.bankInfo.momoNumber}-qr_only.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo.accountHolder || '')}&t=${qrRetry}`}
+                              alt="MoMo QR"
+                              onLoad={() => setQrStatus('success')}
+                              onError={() => setQrStatus('error')}
+                              className={`w-full h-auto rounded-xl transition-opacity duration-300 ${qrStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
+                            <QrCode size={14} className="text-fuchsia-400" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Quét MoMo để trả nhanh</span>
                         </div>
                       </div>
-                       <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
-                          <QrCode size={14} className="text-indigo-400" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
-                            Quét {data.bankInfo?.bankName === 'MOMO' ? 'MoMo' : data.bankInfo?.bankName === 'ZALOPAY' ? 'ZaloPay' : 'mã QR'} để trả nhanh
-                          </span>
-                       </div>
+                    )}
+
+                    {/* Bank QR */}
+                    {data.bankInfo?.bankName && data.bankInfo?.accountNumber && (
+                      <div className="animate-in fade-in zoom-in duration-700">
+                        <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-500/10 mb-4 relative flex items-center justify-center overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+                          <div className="relative z-10 w-full aspect-square flex items-center justify-center">
+                            {bankQrStatus === 'loading' && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 rounded-xl z-20">
+                                <RefreshCw size={24} className="text-indigo-500 animate-spin" />
+                              </div>
+                            )}
+                            {bankQrStatus === 'error' && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/90 rounded-xl z-20 p-4 text-center">
+                                <AlertCircle size={32} className="text-red-500 mb-2" />
+                                <p className="text-[10px] text-slate-800 font-bold mb-3">Lỗi tải mã Bank</p>
+                                <button 
+                                  onClick={() => {
+                                    setBankQrStatus('loading');
+                                    setBankQrRetry(prev => prev + 1);
+                                  }}
+                                  className="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-bold hover:bg-indigo-700 transition-colors shadow-lg"
+                                >
+                                  Thử lại
+                                </button>
+                              </div>
+                            )}
+                            <img 
+                              key={`bank-${bankQrRetry}`}
+                              src={`https://img.vietqr.io/image/${data.bankInfo.bankName}-${data.bankInfo.accountNumber}-qr_only.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo.accountHolder || '')}&t=${bankQrRetry}`}
+                              alt="Bank QR"
+                              onLoad={() => setBankQrStatus('success')}
+                              onError={() => setBankQrStatus('error')}
+                              className={`w-full h-auto rounded-xl transition-opacity duration-300 ${bankQrStatus === 'success' ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2">
+                            <QrCode size={14} className="text-emerald-400" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Quét QR Ngân hàng</span>
+                        </div>
+                      </div>
+                    )}
                        
                        <div className="flex items-center gap-3 mb-6">
                          <div className="h-px flex-1 bg-white/5"></div>

@@ -10,7 +10,6 @@ import { BankInfo } from '@/types';
 import { toast } from 'react-toastify';
 
 const BANK_LIST = [
-  { id: 'MOMO', name: 'Ví MoMo' },
   { id: 'VCB', name: 'Vietcombank' },
   { id: 'ICB', name: 'VietinBank' },
   { id: 'BIDV', name: 'BIDV' },
@@ -22,7 +21,6 @@ const BANK_LIST = [
   { id: 'VIB', name: 'VIB' },
   { id: 'STB', name: 'Sacombank' },
   { id: 'LPB', name: 'LienVietPostBank' },
-  { id: 'ZALOPAY', name: 'Ví ZaloPay' },
 ];
 
 interface GoogleSheetsModalProps {
@@ -41,6 +39,7 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
     bankName: '',
     accountNumber: '',
     accountHolder: '',
+    momoNumber: '',
   });
 
   useEffect(() => {
@@ -109,17 +108,31 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
               <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2 uppercase tracking-wider">
                 <CreditCard size={18} className="text-emerald-400" /> Thông tin bank
               </h2>
-              <div className="space-y-2">
-                <select
-                  value={bankInfo.bankName}
-                  onChange={e => setBankInfo({ ...bankInfo, bankName: e.target.value })}
-                  className="input w-full text-sm h-10 bg-[#1e293b] border-white/10"
-                >
-                  <option value="">-- Chọn ngân hàng --</option>
-                  {BANK_LIST.map(bank => (
-                    <option key={bank.id} value={bank.id}>{bank.name}</option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Ví MoMo</label>
+                  <input
+                    type="text"
+                    placeholder="Số điện thoại MoMo"
+                    value={bankInfo.momoNumber || ''}
+                    onChange={e => setBankInfo({ ...bankInfo, momoNumber: e.target.value })}
+                    className="input w-full text-sm h-10"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Ngân hàng</label>
+                  <select
+                    value={bankInfo.bankName}
+                    onChange={e => setBankInfo({ ...bankInfo, bankName: e.target.value })}
+                    className="input w-full text-sm h-10 bg-[#1e293b] border-white/10"
+                  >
+                    <option value="">-- Chọn ngân hàng --</option>
+                    {BANK_LIST.map(bank => (
+                      <option key={bank.id} value={bank.id}>{bank.name}</option>
+                    ))}
+                  </select>
+                </div>
                 <input
                   type="text"
                   placeholder="Số tài khoản"

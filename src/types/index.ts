@@ -37,6 +37,7 @@ export interface BankInfo {
   bankName: string;
   accountNumber: string;
   accountHolder: string;
+  momoNumber?: string;
   qrUrl?: string;
 }
 
