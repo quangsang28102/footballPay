@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { exportToExcel, importFromExcel } from '@/lib/excel';
-import { loadGoogleScripts, syncToSheet, GoogleConfig } from '@/lib/google-sheets';
+import { loadGoogleScripts, syncDataToGoogle, GoogleConfig } from '@/lib/google-sheets';
 import { loadData, saveData } from '@/lib/storage';
 import GoogleSheetsModal from './GoogleSheetsModal';
 
@@ -102,19 +102,10 @@ export default function Sidebar({ onDataImport }: SidebarProps) {
     setIsSyncing(true);
     try {
       const data = loadData();
-      const response = await fetch('/api/sync-sheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spreadsheetId: googleConfig.spreadsheetId,
-          data,
-          credentials: JSON.parse(googleConfig.serviceAccountJson),
-        }),
-      });
+      const result = await syncDataToGoogle(data);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Lỗi không xác định');
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       toast.success('Đồng bộ thành công!');
