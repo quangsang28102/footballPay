@@ -14,7 +14,8 @@ import {
   CheckCircle,
   MapPin,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 
 function formatCurrency(amount: number): string {
@@ -148,41 +149,62 @@ export default function Dashboard() {
             {/* Recent Matches */}
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Trận đấu gần đây</h2>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Calendar className="text-indigo-400" size={20} />
+                  Trận đấu gần đây
+                </h2>
                 <Link
                   href="/matches"
-                  className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors"
                 >
-                  Xem tất cả <ArrowRight size={16} />
+                  Xem tất cả <ArrowRight size={14} />
                 </Link>
               </div>
 
               {recentMatches.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <Calendar className="mx-auto mb-3 opacity-50" size={40} />
-                  <p>Chưa có trận đấu nào</p>
+                <div className="text-center py-12 text-slate-500 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
+                  <Calendar className="mx-auto mb-3 opacity-20" size={48} />
+                  <p className="text-sm">Chưa có trận đấu nào</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {recentMatches.map((match) => {
-                    const dateStr = formatDate(match.date);
+                    const date = new Date(match.date);
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    
                     return (
                       <div
                         key={match.id}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+                        className="group flex items-center gap-4 p-3 pr-4 rounded-2xl bg-slate-900/40 border border-white/5 hover:bg-slate-800/60 hover:border-indigo-500/30 transition-all duration-300"
                       >
-                        <div className="w-14 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
-                          <span className="text-xs font-bold leading-none">{dateStr}</span>
+                        {/* Calendar Icon Style */}
+                        <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-slate-800 border-2 border-slate-700 group-hover:border-indigo-500 group-hover:scale-105 transition-all shadow-lg text-center flex-shrink-0">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter leading-none mt-0.5">T.{month}</span>
+                          <span className="text-2xl font-black text-indigo-400 leading-none">{day}</span>
                         </div>
+                        
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate">{match.location}</h3>
-                          <p className="text-sm text-slate-400 flex items-center gap-1">
-                            <Users size={14} /> {match.playerIds.length} người
-                          </p>
+                          <h3 className="font-bold text-slate-200 truncate group-hover:text-indigo-300 transition-colors">
+                            {match.location}
+                          </h3>
+                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                            <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full">
+                               <Users size={12} /> {match.playerIds.length}
+                            </span>
+                            <span className="flex items-center gap-1">
+                               <Clock size={12} /> {match.time || '--:--'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-amber-400">{formatCurrency(match.totalCost)}</p>
-                          <p className="text-xs text-slate-500">{formatCurrency(match.perPerson)}/người</p>
+                        
+                        <div className="text-right flex flex-col items-end">
+                          <p className="font-bold text-emerald-400 font-mono text-sm bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 mb-1">
+                            {formatCurrency(match.totalCost)}
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
+                            {formatCurrency(match.perPerson)} / người
+                          </p>
                         </div>
                       </div>
                     );
@@ -194,41 +216,51 @@ export default function Dashboard() {
             {/* Unpaid Payments */}
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Chưa thanh toán</h2>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <AlertCircle className="text-amber-500" size={20} />
+                  Chưa thanh toán
+                </h2>
                 <Link
                   href="/payments"
-                  className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors"
                 >
-                  Xem tất cả <ArrowRight size={16} />
+                  Xem tất cả <ArrowRight size={14} />
                 </Link>
               </div>
 
               {unpaidPayments.length === 0 ? (
-                <div className="text-center py-8 text-emerald-500">
-                  <CheckCircle className="mx-auto mb-3" size={40} />
-                  <p>Tất cả đã thanh toán!</p>
+                <div className="text-center py-12 text-emerald-500 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 border-dashed">
+                  <CheckCircle className="mx-auto mb-3 opacity-50" size={48} />
+                  <p className="font-bold">Tuyệt vời!</p>
+                  <p className="text-sm opacity-80">Tất cả đã thanh toán</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {unpaidPayments.map((payment, idx) => (
                     <div
                       key={`${payment.matchId}-${payment.playerId}-${idx}`}
-                      className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+                      className="group flex items-center gap-4 p-3 pr-4 rounded-2xl bg-slate-900/40 border border-white/5 hover:bg-slate-800/60 hover:border-amber-500/30 transition-all duration-300"
                     >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border border-white/10 flex items-center justify-center text-slate-300 font-bold shadow-lg group-hover:scale-105 transition-transform">
                         {payment.player?.name?.[0] || '?'}
                       </div>
+                      
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">{payment.player?.name || 'Unknown'}</h3>
-                        <p className="text-sm text-slate-400 flex items-center gap-1">
-                          <MapPin size={14} /> {payment.match?.location || 'Unknown'}
+                        <h3 className="font-bold text-slate-200 truncate group-hover:text-amber-400 transition-colors">
+                            {payment.player?.name || 'Unknown'}
+                        </h3>
+                        <p className="text-xs text-slate-500 flex items-center gap-1 truncate mt-0.5">
+                          <MapPin size={10} /> {payment.match?.location || 'Unknown'}
                         </p>
                       </div>
+                      
                       <div className="text-right">
-                        <p className="font-semibold text-red-400">
+                        <p className="font-bold text-amber-500 font-mono text-sm">
                           -{formatCurrency(payment.amountOwed - payment.amountPaid)}
                         </p>
-                        <span className="badge badge-warning">Chưa trả</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
+                            Nợ
+                        </span>
                       </div>
                     </div>
                   ))}
