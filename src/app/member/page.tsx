@@ -327,7 +327,7 @@ function MemberViewContent() {
                       <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-500/10 mb-4 relative flex items-center justify-center overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/5 to-transparent pointer-events-none" />
                         <img 
-                          src={`https://api.vietqr.io/momo/v1/generate?accountName=${encodeURIComponent(data.bankInfo?.accountHolder || 'Admin')}&accountNumber=${data.bankInfo?.accountNumber || ''}&amount=${Math.round(playerStats.debt)}&addLogo=1`}
+                          src={`https://img.vietqr.io/image/MOMO-${data.bankInfo?.accountNumber}-compact2.png?amount=${Math.round(playerStats.debt)}&addInfo=${encodeURIComponent(`${playerStats.player.name} thanh toan`)}&accountName=${encodeURIComponent(data.bankInfo?.accountHolder || '')}`}
                           alt="MoMo QR"
                           className="w-full h-auto rounded-xl relative z-10"
                         />
