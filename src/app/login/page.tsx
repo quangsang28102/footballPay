@@ -11,14 +11,21 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(pin)) {
-      toast.success('Xác thực Admin thành công!');
-      router.push('/');
-    } else {
-      toast.error('Mã PIN không chính xác!');
-      setPin('');
+    setIsLoading(true);
+    try {
+      if (await login(pin)) {
+        toast.success('Xác thực Admin thành công!');
+        router.push('/');
+      } else {
+        toast.error('Mã PIN không chính xác!');
+        setPin('');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -64,10 +71,11 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
-              <span>Xác nhận</span>
-              <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              <span>{isLoading ? 'Đang kiểm tra...' : 'Xác nhận'}</span>
+              {!isLoading && <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
 

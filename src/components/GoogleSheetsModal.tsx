@@ -31,10 +31,9 @@ interface GoogleSheetsModalProps {
 }
 
 export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConfig }: GoogleSheetsModalProps) {
-  const { getRawPin, updatePin } = useAuth();
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  const { getRawPin } = useAuth(); // kept for interface compatibility if needed, but unused
   const [config, setConfig] = useState<GoogleConfig>(initialConfig);
-  const [newPin, setNewPin] = useState('');
-  const [showPin, setShowPin] = useState(false);
   const [bankInfo, setBankInfo] = useState<BankInfo>({
     bankName: '',
     accountNumber: '',
@@ -44,9 +43,6 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
 
   useEffect(() => {
     setConfig(initialConfig);
-    setNewPin(getRawPin());
-    setShowPin(false);
-    
     // Load Bank Info
     const data = loadData();
     if (data.bankInfo) {
@@ -57,9 +53,6 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(config);
-    if (newPin && newPin.length >= 4) {
-      updatePin(newPin);
-    }
     updateBankInfo(bankInfo);
     onClose();
   };
@@ -71,36 +64,22 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
         {/* Admin Security & Bank Section (Top) */}
         <div className="pb-6 border-b border-white/10 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* PIN Settings */}
+            {/* PIN Settings - NOW MANAGED VIA ENV VAR */}
             <div>
               <h2 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2 uppercase tracking-wider">
                 <ShieldCheck size={18} className="text-indigo-400" /> Bảo mật Admin
               </h2>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Mã PIN Admin (4 số)</label>
-              <div className="relative group">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
-                <input
-                  type={showPin ? 'text' : 'password'}
-                  maxLength={4}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={newPin}
-                  onChange={e => setNewPin(e.target.value)}
-                  className="input w-full pl-10 pr-10 font-mono tracking-widest addPaddingLeft"
-                  placeholder="####"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPin(!showPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
-                  title={showPin ? "Ẩn mã PIN" : "Hiện mã PIN"}
-                >
-                  {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+              <div className="bg-slate-900/50 border border-white/5 rounded-xl p-4">
+                <p className="text-xs text-slate-400 leading-relaxed mb-2">
+                  Để đảm bảo bảo mật đồng bộ trên mọi thiết bị, mật khẩu Admin hiện được quản lý qua <strong>Biến môi trường (Environment Variables)</strong>.
+                </p>
+                <div className="bg-black/30 rounded p-2 font-mono text-[10px] text-emerald-400 border border-white/5 break-all">
+                  ADMIN_PASSWORD = ******
+                </div>
+                <p className="mt-2 text-[10px] text-slate-500 italic">
+                  * Vui lòng truy cập Vercel &gt; Settings &gt; Environment Variables để thay đổi mật khẩu.
+                </p>
               </div>
-              <p className="mt-1 text-[10px] text-slate-500 italic">
-                 Dùng để đăng nhập trang quản trị.
-              </p>
             </div>
 
             {/* Bank Settings */}
