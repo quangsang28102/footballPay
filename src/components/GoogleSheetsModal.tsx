@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import { GoogleConfig } from '@/lib/google-sheets';
-import { Settings, Info, ExternalLink, Save, CheckCircle, Lock, ShieldCheck, Eye, EyeOff, CreditCard, Copy } from 'lucide-react';
+import { Settings, Info, ExternalLink, Save, CheckCircle, Lock, ShieldCheck, Eye, EyeOff, CreditCard, Copy, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { updateBankInfo, loadData } from '@/lib/storage';
 import { BankInfo } from '@/types';
@@ -152,19 +152,54 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
           </div>
         </div>
 
-        {/* Help Banner */}
-        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4">
-          <div className="flex gap-3">
-            <Info className="flex-shrink-0 text-indigo-400 mt-0.5" size={20} />
-            <div className="space-y-2 text-sm text-slate-300">
-              <p>
-                <strong>Cấu hình Google Sheets:</strong>
+        <div className="space-y-4 pt-4 border-t border-white/10">
+          <h2 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2 uppercase tracking-wider">
+            <FileSpreadsheet size={18} className="text-indigo-400" /> Cấu hình Google Sheets
+          </h2>
+
+          {config.spreadsheetId && (
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-4">
+              <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <ExternalLink size={12} /> Link tra cứu cho thành viên
               </p>
-              <ul className="list-disc pl-5 space-y-1 text-slate-400 text-xs">
-                <li>Vào <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">Google Cloud Console</a>.</li>
-                <li>Copy toàn bộ nội dung file JSON Key vào ô bên dưới.</li>
-                <li><strong>QUAN TRỌNG:</strong> Chia sẻ file Google Sheet (Quyền Editor) với email của Service Account.</li>
-              </ul>
+              <div className="flex gap-2">
+                <input 
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/member`}
+                  className="bg-slate-900/50 border border-white/5 rounded-lg text-[11px] px-3 py-2 flex-1 font-mono text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = `${window.location.origin}/member`;
+                    navigator.clipboard.writeText(link);
+                    toast.success('Đã copy link chia sẻ!');
+                  }}
+                  className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-all"
+                  title="Copy Link"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+              <p className="text-[9px] text-slate-500 mt-2 leading-relaxed">
+                * Gửi link này cho thành viên. Link này sẽ tự động lấy dữ liệu mới nhất.
+              </p>
+            </div>
+          )}
+
+          {/* Help Banner moved inside */}
+          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4">
+            <div className="flex gap-3">
+              <Info className="flex-shrink-0 text-indigo-400 mt-0.5" size={20} />
+              <div className="space-y-2 text-sm text-slate-300">
+                <p>
+                  <strong>Hướng dẫn:</strong>
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-400 text-xs">
+                  <li>Chia sẻ Google Sheet cho email Service Account.</li>
+                  <li>Dán nội dung JSON Key và Spreadsheet ID xuống dưới.</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -203,37 +238,6 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
               className="input w-full font-mono text-sm"
             />
           </div>
-
-          {config.spreadsheetId && (
-            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mt-2">
-              <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <ExternalLink size={12} /> Link tra cứu cho thành viên
-              </p>
-              <div className="flex gap-2">
-                <input 
-                  readOnly
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/member?id=${config.spreadsheetId}`}
-                  className="bg-slate-900/50 border border-white/5 rounded-lg text-[11px] px-3 py-2 flex-1 font-mono text-slate-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const link = `${window.location.origin}/member?id=${config.spreadsheetId}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success('Đã copy link chia sẻ!');
-                  }}
-                  className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-all"
-                  title="Copy Link"
-                >
-                  <Copy size={16} />
-                </button>
-              </div>
-              <p className="text-[9px] text-slate-500 mt-2 leading-relaxed">
-                * Gửi link này cho thành viên để họ thấy dữ liệu mới nhất. <br/>
-                * <strong>Lưu ý:</strong> Để các máy khác xem được, bạn cần cấu hình GOOGLE_CLIENT_EMAIL và GOOGLE_PRIVATE_KEY trên Vercel.
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="flex gap-3 pt-2">
