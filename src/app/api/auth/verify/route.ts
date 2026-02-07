@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     const envHash = await hashPassword(envPassword);
     
     let targetHash = envHash;
+    let hasSheetPassword = false;
 
     if (spreadsheetId) {
         const protocol = req.nextUrl.protocol;
@@ -30,8 +31,10 @@ export async function POST(req: NextRequest) {
                 const data = await response.json();
                 if (data && data.adminPasswordHash) {
                     targetHash = data.adminPasswordHash;
+                    hasSheetPassword = true;
                 } else if (data && data.adminPassword) {
                     targetHash = await hashPassword(data.adminPassword);
+                    hasSheetPassword = true;
                 }
             }
         } catch (e) {
@@ -40,15 +43,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Logic: verify if the provided token matches the current correct hash
-    // The client sends the token which IS the hash of the password they logged in with.
-    // If we changed the password on the server, targetHash changes.
-    // So stored token (old hash) != targetHash (new hash) -> Invalid -> Logout.
     
     if (token === targetHash) {
       return NextResponse.json({ valid: true });
     } else {
-        // Allow fallback to ENV password if mismatched (e.g. sheet fetch failed but ENV is valid)
-        if (token === envHash) {
+        // Fallback: ONLY use ENV token if Sheet does NOT have a password configured
+        if (!hasSheetPassword && token === envHash) {
              return NextResponse.json({ valid: true });
         }
 

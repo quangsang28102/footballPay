@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
     // We expect the sheet to return JSON data which might contain adminPasswordHash OR adminPassword (legacy)
     const response = await fetch(apiUrl);
     
-    let targetHash = envHash; // Default to env password if sheet doesn't have one
+    let targetHash = envHash;
+    let hasSheetPassword = false;
 
     if (response.ok) {
         const data = await response.json();
@@ -49,20 +50,20 @@ export async function POST(req: NextRequest) {
         // Priority 1: Stored Hash
         if (data && data.adminPasswordHash) {
             targetHash = data.adminPasswordHash;
+            hasSheetPassword = true;
         } 
-        // Priority 2: Legacy Plain Password (if exists) -> migrate on fly? No, just use it.
+        // Priority 2: Legacy Plain Password (if exists)
         else if (data && data.adminPassword) {
             targetHash = await hashPassword(data.adminPassword);
+            hasSheetPassword = true;
         }
     }
 
     if (inputHash === targetHash) {
       return NextResponse.json({ success: true, token: inputHash });
     } else {
-        // Fallback: If sheet sync failed or something, maybe try ENV password?
-        // But if user set a custom password in sheet, ENV password shouldn't work.
-        // Unless we consider ENV as a "Master Key"? Let's allow ENV as master key for safety in case of lockout.
-        if (inputHash === envHash) {
+        // Fallback: ONLY use ENV password if Sheet does NOT have a password configured
+        if (!hasSheetPassword && inputHash === envHash) {
              return NextResponse.json({ success: true, token: inputHash });
         }
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
