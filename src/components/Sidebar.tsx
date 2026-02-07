@@ -176,10 +176,16 @@ export default function Sidebar({ onDataImport }: SidebarProps) {
         <nav className="p-4 space-y-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
+            
+            // Generate link with ID for member view
+            const href = item.href === '/member' && googleConfig.spreadsheetId
+              ? `/member?id=${googleConfig.spreadsheetId}`
+              : item.href;
+
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={href}
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive

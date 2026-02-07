@@ -165,13 +165,13 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
               <div className="flex gap-2">
                 <input 
                   readOnly
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/member`}
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/member?id=${config.spreadsheetId}`}
                   className="bg-slate-900/50 border border-white/5 rounded-lg text-[11px] px-3 py-2 flex-1 font-mono text-slate-400"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    const link = `${window.location.origin}/member`;
+                    const link = `${window.location.origin}/member?id=${config.spreadsheetId}`;
                     navigator.clipboard.writeText(link);
                     toast.success('Đã copy link chia sẻ!');
                   }}

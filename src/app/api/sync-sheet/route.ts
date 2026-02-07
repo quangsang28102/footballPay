@@ -150,6 +150,59 @@ export async function POST(req: NextRequest) {
       requestBody: { values: [statsHeader1, statsHeader2, ...statsRows] }
     });
 
+    // --- 5. ENHANCE FORMATTING (Merging) ---
+    const statsSheetId = metadata.data.sheets?.find(s => s.properties?.title === 'Thống kê')?.properties?.sheetId;
+    if (statsSheetId !== undefined) {
+      const formattingRequests: any[] = [
+        // Merge STT (A1:A2)
+        { mergeCells: { range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 1 }, mergeType: 'MERGE_ALL' } },
+        // Merge Tên (B1:B2)
+        { mergeCells: { range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 }, mergeType: 'MERGE_ALL' } },
+      ];
+
+      // Merge Date Headers
+      sortedMatches.forEach((_, i) => {
+        const colIndex = 2 + (i * 2);
+        formattingRequests.push({
+          mergeCells: { 
+            range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: colIndex, endColumnIndex: colIndex + 2 }, 
+            mergeType: 'MERGE_ALL' 
+          }
+        });
+      });
+
+      // Merge Totals (End columns)
+      const lastMatchCol = 2 + (sortedMatches.length * 2);
+      for (let i = 0; i < 3; i++) {
+        formattingRequests.push({
+          mergeCells: { 
+            range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: lastMatchCol + i, endColumnIndex: lastMatchCol + i + 1 }, 
+            mergeType: 'MERGE_ALL' 
+          }
+        });
+      }
+
+      // Add Bold and Center Alignment to Row 1 & 2
+      formattingRequests.push({
+        repeatCell: {
+          range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: lastMatchCol + 3 },
+          cell: {
+            userEnteredFormat: {
+              horizontalAlignment: 'CENTER',
+              verticalAlignment: 'MIDDLE',
+              textFormat: { bold: true }
+            }
+          },
+          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat)'
+        }
+      });
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests: formattingRequests }
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('API Error:', error);
@@ -160,17 +213,12 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    let spreadsheetId = searchParams.get('id');
-    
-    // Fallback to server-side environment variable if no ID in URL
-    if (!spreadsheetId) {
-      spreadsheetId = process.env.SPREADSHEET_ID?.trim() || null;
-    }
+    const spreadsheetId = searchParams.get('id');
 
     if (!spreadsheetId) {
       return NextResponse.json({ 
         error: 'Thiếu Spreadsheet ID',
-        help: 'Bạn có thể truyền ID qua URL (?id=...) hoặc cấu hình SPREADSHEET_ID trong Vercel để dùng link rút gọn.'
+        help: 'Vui lòng truy cập link đầy đủ có mã ?id=... để xem dữ liệu.'
       }, { status: 400 });
     }
 
