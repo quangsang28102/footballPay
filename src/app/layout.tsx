@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Football Payment Manager",
   description: "Quản lý chia tiền đá banh sau mỗi trận đấu",
+  icons: {
+    icon: "https://assets.manutd.com/AssetPicker/images/0/0/3/2/197240/Header-Logo1500994616801.png",
+  },
 };
 
 import { ToastContainer } from 'react-toastify';

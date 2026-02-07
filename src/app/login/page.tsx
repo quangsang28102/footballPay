@@ -33,8 +33,8 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md animate-in fade-in zoom-in duration-500">
         <div className="glass-card p-8 text-center bg-white/5 border-white/10">
           <div className="mb-8 flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/40 transform -rotate-6">
-              <Trophy className="text-white" size={32} />
+            <div className="w-16 h-16 flex items-center justify-center transform -rotate-6">
+              <img src="https://assets.manutd.com/AssetPicker/images/0/0/3/2/197240/Header-Logo1500994616801.png" alt="Logo" className="w-full h-full object-contain filter drop-shadow-2xl" />
             </div>
           </div>
 
