@@ -24,12 +24,12 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function formatDate(dateStr: string): { day: string; month: string } {
+function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return {
-    day: date.getDate().toString().padStart(2, '0'),
-    month: `Th${date.getMonth() + 1}`,
-  };
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 export default function Dashboard() {
@@ -141,15 +141,14 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-3">
                   {recentMatches.map((match) => {
-                    const { day, month } = formatDate(match.date);
+                    const dateStr = formatDate(match.date);
                     return (
                       <div
                         key={match.id}
                         className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex flex-col items-center justify-center text-white">
-                          <span className="text-lg font-bold leading-none">{day}</span>
-                          <span className="text-[10px] opacity-80">{month}</span>
+                        <div className="w-14 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+                          <span className="text-xs font-bold leading-none">{dateStr}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium truncate">{match.location}</h3>

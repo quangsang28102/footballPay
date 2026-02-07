@@ -117,65 +117,54 @@ export async function POST(req: NextRequest) {
     const sortedMatches = [...data.matches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const sortedPlayers = [...data.players].sort((a, b) => a.name.localeCompare(b.name));
 
-    // Precise header building with explicit array sizes
+    // Build header arrays with explicit values for EVERY cell
     const matchCount = sortedMatches.length;
-    const headerWidth = 2 + (matchCount * 2) + 3;
     
-    const statsHeader1 = new Array(headerWidth).fill('');
-    const statsHeader2 = new Array(headerWidth).fill('');
-
-    // STT & Tên
-    statsHeader1[0] = 'STT'; statsHeader1[1] = 'Thời gian';
-    statsHeader2[0] = 'STT'; statsHeader2[1] = 'Tên';
-
-    sortedMatches.forEach((m, i) => {
-      const colIndex = 2 + (i * 2);
-      // Format date as dd/mm/yyyy manually to be safe
+    // Row 1: STT | Thời gian | [Date1] | [empty] | [Date2] | [empty] | ... | Tổng tiền | Đã trả | Còn nợ
+    // Row 2: [empty] | Tên | Số lượng | Giá/slot | Số lượng | Giá/slot | ... | [empty] | [empty] | [empty]
+    
+    const statsHeader1: string[] = ['STT', 'Thời gian'];
+    const statsHeader2: string[] = ['', 'Tên'];
+    
+    // Add columns for each match
+    for (let i = 0; i < matchCount; i++) {
+      const m = sortedMatches[i];
       const d = new Date(m.date);
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      const dateStr = `${day}/${month}/${year}`;
+      // Prefix with single quote to force text format in Google Sheets
+      const dateStr = `'${day}/${month}/${year}`;
       
-      statsHeader1[colIndex] = dateStr;
-      statsHeader2[colIndex] = 'Số lượng';
-      statsHeader2[colIndex + 1] = 'Giá/slot';
-    });
-
-    // Totals
-    const lastMatchCol = 2 + (matchCount * 2);
-    statsHeader1[lastMatchCol] = 'Tổng tiền';
-    statsHeader1[lastMatchCol + 1] = 'Đã trả';
-    statsHeader1[lastMatchCol + 2] = 'Còn nợ';
+      statsHeader1.push(dateStr, ''); // Date spans 2 columns, second is empty for merge
+      statsHeader2.push('Số lượng', 'Giá/slot');
+    }
     
-    // Fill row 2 of totals too so it persists after merge
-    statsHeader2[lastMatchCol] = 'Tổng tiền';
-    statsHeader2[lastMatchCol + 1] = 'Đã trả';
-    statsHeader2[lastMatchCol + 2] = 'Còn nợ';
+    // Add totals columns
+    statsHeader1.push('Tổng tiền', 'Đã trả', 'Còn nợ');
+    statsHeader2.push('', '', ''); // Empty for merge with row 1
+    
+    const lastMatchCol = 2 + (matchCount * 2);
+    const totalColCount = lastMatchCol + 3;
 
+    // Build data rows
     const statsRows = sortedPlayers.map((player, index) => {
-      const row = new Array(headerWidth).fill('');
-      row[0] = index + 1;
-      row[1] = player.name;
-      
-      let totalOwed = 0; 
+      const row: (string | number)[] = [index + 1, player.name];
+      let totalOwed = 0;
       let totalPaid = 0;
       
-      sortedMatches.forEach((match, i) => {
-        const colIndex = 2 + (i * 2);
+      for (let i = 0; i < matchCount; i++) {
+        const match = sortedMatches[i];
         const playerPayments = data.payments.filter(p => p.matchId === match.id && p.playerId === player.id);
         const matchOwed = playerPayments.reduce((s, p) => s + p.amountOwed, 0);
         const matchPaid = playerPayments.reduce((s, p) => s + p.amountPaid, 0);
         
-        row[colIndex] = playerPayments.length || 0;
-        row[colIndex + 1] = formatCurrency(matchOwed);
+        row.push(playerPayments.length || 0, formatCurrency(matchOwed));
         totalOwed += matchOwed;
         totalPaid += matchPaid;
-      });
+      }
       
-      row[lastMatchCol] = formatCurrency(totalOwed);
-      row[lastMatchCol + 1] = formatCurrency(totalPaid);
-      row[lastMatchCol + 2] = formatCurrency(totalOwed - totalPaid);
+      row.push(formatCurrency(totalOwed), formatCurrency(totalPaid), formatCurrency(totalOwed - totalPaid));
       return row;
     });
 
