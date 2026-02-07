@@ -132,27 +132,36 @@ export default function MatchesPage() {
     }
     const updatedData = loadData();
     setData(updatedData);
+    setModalOpen(false);
     
-    // Auto sync
-    toast.info('Đang đồng bộ dữ liệu...');
-    syncDataToGoogle(updatedData).then(res => {
-      if (res.success) toast.success('Đồng bộ Cloud thành công!');
-      else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
-    });
-  };
-
-  const handleDelete = () => {
-    if (deleteId) {
-      const updatedData = loadData();
-      setData(updatedData);
-      setConfirmOpen(false);
-
-      // Auto sync
+    // Auto sync triggered AFTER success and modal closed
+    setTimeout(() => {
       toast.info('Đang đồng bộ dữ liệu...');
       syncDataToGoogle(updatedData).then(res => {
         if (res.success) toast.success('Đồng bộ Cloud thành công!');
         else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
       });
+    }, 500);
+  };
+
+  const handleDelete = () => {
+    if (deleteId) {
+      deleteMatch(deleteId);
+      toast.success('Xóa trận đấu thành công!');
+      
+      const updatedData = loadData();
+      setData(updatedData);
+      setConfirmOpen(false);
+      setDeleteId(null);
+
+      // Auto sync triggered AFTER success
+      setTimeout(() => {
+        toast.info('Đang đồng bộ dữ liệu...');
+        syncDataToGoogle(updatedData).then(res => {
+          if (res.success) toast.success('Đồng bộ Cloud thành công!');
+          else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
+        });
+      }, 500);
     }
   };
 

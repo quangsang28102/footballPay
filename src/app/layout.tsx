@@ -30,7 +30,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased text-white`}>
         <AuthProvider>
           {children}
-          <ToastContainer position="top-right" theme="dark" autoClose={3000} />
+          <ToastContainer position="top-right" theme="dark" autoClose={1500} />
         </AuthProvider>
       </body>
     </html>

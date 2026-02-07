@@ -160,19 +160,31 @@ export async function POST(req: NextRequest) {
       requestBody: { values: [statsHeader1, statsHeader2, ...statsRows] }
     });
 
-    // --- 5. ENHANCE FORMATTING (Merging) ---
+    // --- 5. ENHANCE FORMATTING (Merging & Borders) ---
     const statsSheetId = metadata.data.sheets?.find(s => s.properties?.title === 'Thống kê')?.properties?.sheetId;
     if (statsSheetId !== undefined) {
+      const lastMatchCol = 2 + (sortedMatches.length * 2);
+      const totalColCount = lastMatchCol + 3;
+      const totalRowCount = statsRows.length + 2;
+
       const formattingRequests: any[] = [
-        // FIRST: Unmerge everything to avoid overlaps
+        // 1. FULL RESET: Unmerge and Reset Styles for the entire work area
         { unmergeCells: { range: { sheetId: statsSheetId } } },
+        {
+          updateCells: {
+            range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 500, startColumnIndex: 0, endColumnIndex: 50 },
+            fields: 'userEnteredFormat' // Resets colors, fonts, alignment, borders
+          }
+        },
+        
+        // 2. APPLY MERGES
         // Merge STT (A1:A2)
         { mergeCells: { range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 1 }, mergeType: 'MERGE_ALL' } },
         // Merge Tên (B1:B2)
         { mergeCells: { range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 }, mergeType: 'MERGE_ALL' } },
       ];
 
-      // Merge Date Headers
+      // Merge Date Headers (C1:D1, E1:F1, etc.)
       sortedMatches.forEach((_, i) => {
         const colIndex = 2 + (i * 2);
         formattingRequests.push({
@@ -183,8 +195,7 @@ export async function POST(req: NextRequest) {
         });
       });
 
-      // Merge Totals (End columns)
-      const lastMatchCol = 2 + (sortedMatches.length * 2);
+      // Merge Totals vertically
       for (let i = 0; i < 3; i++) {
         formattingRequests.push({
           mergeCells: { 
@@ -194,38 +205,42 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Add Bold, Center Alignment and Background Color to Headers (Row 1 & 2)
+      // 3. APPLY STYLING (Headers)
       formattingRequests.push({
         repeatCell: {
-          range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: lastMatchCol + 3 },
+          range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: totalColCount },
           cell: {
             userEnteredFormat: {
               horizontalAlignment: 'CENTER',
               verticalAlignment: 'MIDDLE',
               textFormat: { bold: true },
-              backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 }
+              backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+              borders: {
+                top: { style: 'SOLID' }, bottom: { style: 'SOLID' },
+                left: { style: 'SOLID' }, right: { style: 'SOLID' }
+              }
             }
           },
-          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat,backgroundColor)'
+          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat,backgroundColor,borders)'
         }
       });
 
-      // Add Borders to the entire table
+      // 4. APPLY BORDERS TO DATA
       formattingRequests.push({
         updateBorders: {
-          range: { 
-            sheetId: statsSheetId, 
-            startRowIndex: 0, 
-            endRowIndex: statsRows.length + 2, 
-            startColumnIndex: 0, 
-            endColumnIndex: lastMatchCol + 3 
-          },
-          top: { style: 'SOLID', width: 1 },
-          bottom: { style: 'SOLID', width: 1 },
-          left: { style: 'SOLID', width: 1 },
-          right: { style: 'SOLID', width: 1 },
-          innerHorizontal: { style: 'SOLID', width: 1 },
-          innerVertical: { style: 'SOLID', width: 1 },
+          range: { sheetId: statsSheetId, startRowIndex: 2, endRowIndex: totalRowCount, startColumnIndex: 0, endColumnIndex: totalColCount },
+          top: { style: 'SOLID' }, bottom: { style: 'SOLID' },
+          left: { style: 'SOLID' }, right: { style: 'SOLID' },
+          innerHorizontal: { style: 'SOLID' }, innerVertical: { style: 'SOLID' }
+        }
+      });
+
+      // 5. DATA ALIGNMENT (Center STT and Quantity)
+      formattingRequests.push({
+        repeatCell: {
+          range: { sheetId: statsSheetId, startRowIndex: 2, endRowIndex: totalRowCount, startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { horizontalAlignment: 'CENTER' } },
+          fields: 'userEnteredFormat.horizontalAlignment'
         }
       });
 
