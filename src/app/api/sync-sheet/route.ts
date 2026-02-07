@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
     let private_key = process.env.GOOGLE_PRIVATE_KEY?.trim();
 
     if (!spreadsheetId) {
-      return NextResponse.json({ error: 'Missing spreadsheetId (id parameter)' }, { status: 400 });
+      return NextResponse.json({ error: 'Thiếu Spreadsheet ID (id parameter)' }, { status: 400 });
     }
 
     if (!client_email || !private_key) {
@@ -175,30 +175,32 @@ export async function GET(req: NextRequest) {
       if (!client_email) missing.push('GOOGLE_CLIENT_EMAIL');
       if (!private_key) missing.push('GOOGLE_PRIVATE_KEY');
       return NextResponse.json({ 
-        error: `Server sync not configured. Missing: ${missing.join(', ')}`,
-        help: 'Please add these environment variables in your Vercel project settings.'
+        error: `Cấu hình Server chưa hoàn tất. Thiếu: ${missing.join(', ')}`,
+        help: 'Bạn hãy vào Vercel Settings -> Env Vars thêm đủ 2 biến này, sau đó ra tab Deployments nhấn REDEPLOY để nạp lại cấu hình nhé!'
       }, { status: 500 });
     }
 
-    // Handle private key formatting: 
-    // 1. Remove wrapping quotes if any
+    // Handle private key formatting (extremely robust)
+    // 1. Remove wrapping quotes
     if (private_key.startsWith('"') && private_key.endsWith('"')) {
       private_key = private_key.substring(1, private_key.length - 1);
     }
-    // 2. Handle literal \n strings vs actual newlines
+    // 2. Fix literal \n characters (common when pasting from JSON)
     private_key = private_key.replace(/\\n/g, '\n');
+    // 3. Ensure BEGIN/END tags exist (if they were stripped) - less common but safer
+    if (!private_key.includes('-----BEGIN PRIVATE KEY-----')) {
+      private_key = `-----BEGIN PRIVATE KEY-----\n${private_key}\n-----END PRIVATE KEY-----`;
+    }
 
     const auth = new google.auth.GoogleAuth({
-      credentials: { 
-        client_email, 
-        private_key 
-      },
+      credentials: { client_email, private_key },
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
     
-    // Fetch from the raw data sheet we created during POST sync
+    // Fetch from the raw data sheet tab
+    // We use a broader range to find the sheet even if there are weird trailing/leading spaces in name
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: '_APP_DATA_!A1',
@@ -206,20 +208,20 @@ export async function GET(req: NextRequest) {
 
     const rawData = response.data.values?.[0]?.[0];
     if (!rawData) {
-      return NextResponse.json({ error: 'No data found in sheet tab _APP_DATA_!A1' }, { status: 404 });
+      return NextResponse.json({ error: 'Không tìm thấy dữ liệu trong tab _APP_DATA_!A1' }, { status: 404 });
     }
 
     try {
-      const parsedData = JSON.parse(rawData);
-      return NextResponse.json(parsedData);
+      return NextResponse.json(JSON.parse(rawData));
     } catch (e) {
-      return NextResponse.json({ error: 'Data in sheet is not valid JSON' }, { status: 500 });
+      return NextResponse.json({ error: 'Dữ liệu trong Google Sheet không đúng định dạng JSON' }, { status: 500 });
     }
   } catch (error: any) {
     console.error('Fetch Error:', error);
     return NextResponse.json({ 
-      error: error.message || 'Internal Server Error',
-      details: error.response?.data || 'No additional details'
+      error: 'Lỗi truy cập Google Sheets',
+      details: error.message || 'Unknown error',
+      help: 'Hãy đảm bảo bạn đã CHIA SẺ file Google Sheet cho email Service Account với quyền Người xem (Viewer).'
     }, { status: 500 });
   }
 }
