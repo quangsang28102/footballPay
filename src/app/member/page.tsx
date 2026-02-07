@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadData, saveData } from '@/lib/storage';
 import { AppData, Player, Match, Payment } from '@/types';
@@ -40,37 +40,44 @@ function MemberViewContent() {
   const [bankQrStatus, setBankQrStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [bankQrRetry, setBankQrRetry] = useState(0);
 
+  const fetchCloudData = useCallback(async (id: string, isAuto = false) => {
+    if (!isAuto) setIsSyncing(true);
+    try {
+      const res = await fetch(`/api/sync-sheet?id=${id}`);
+      if (res.ok) {
+        const cloudData = await res.json();
+        setData(cloudData);
+        saveData(cloudData); // Persist
+        if (!isAuto) toast.success('Đã đồng bộ dữ liệu mới nhất!');
+      } else {
+        const err = await res.json();
+        if (!err.error?.includes('Server not configured') && !isAuto) {
+          toast.error('Lỗi tải dữ liệu: ' + err.error);
+        }
+      }
+    } catch (e) {
+      console.error('Fetch error:', e);
+    } finally {
+      if (!isAuto) setIsSyncing(false);
+    }
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     const localData = loadData();
     setData(localData);
 
-    const fetchCloudData = async (id: string) => {
-      setIsSyncing(true);
-      try {
-        const res = await fetch(`/api/sync-sheet?id=${id}`);
-        if (res.ok) {
-          const cloudData = await res.json();
-          setData(cloudData);
-          saveData(cloudData); // Persist
-          toast.success('Đã đồng bộ dữ liệu mới nhất!');
-        } else {
-          const err = await res.json();
-          if (!err.error?.includes('Server not configured')) {
-            toast.error('Lỗi tải dữ liệu: ' + err.error);
-          }
-        }
-      } catch (e) {
-        console.error('Fetch error:', e);
-      } finally {
-        setIsSyncing(false);
-      }
-    };
-
     if (cloudId) {
-      fetchCloudData(cloudId);
+      fetchCloudData(cloudId, false);
+
+      // Auto poll every 15 seconds
+      const interval = setInterval(() => {
+        fetchCloudData(cloudId, true);
+      }, 15000);
+
+      return () => clearInterval(interval);
     }
-  }, [cloudId]);
+  }, [cloudId, fetchCloudData]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);

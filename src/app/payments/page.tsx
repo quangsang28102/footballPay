@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import Sidebar from '@/components/Sidebar';
 import Modal from '@/components/Modal';
 import { loadData, updatePayment, getPaymentStatus } from '@/lib/storage';
+import { syncDataToGoogle } from '@/lib/google-sheets';
 import { formatDate } from '@/lib/utils';
 import { AppData, Payment, Player, Match } from '@/types';
 import { Search, Check, AlertCircle, Clock, DollarSign, MapPin, User, X } from 'lucide-react';
@@ -134,15 +135,24 @@ export default function PaymentsPage() {
     setModalOpen(true);
   };
 
-  const markAsPaid = (payment: any) => {
+  const markAsPaid = async (payment: any) => {
     const success = updatePayment(payment.matchId, payment.playerId, payment.amountOwed);
     if (success) {
       toast.success('Đã đánh dấu là đã trả!');
       refreshData();
+      
+      // Auto-sync
+      const newData = loadData();
+      const res = await syncDataToGoogle(newData);
+      if (res.success) {
+        toast.success('Đã đồng bộ Google Sheets!');
+      } else {
+        toast.warning('Chưa đồng bộ được Google Sheets: ' + res.error);
+      }
     }
   };
 
-  const handlePaymentSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedPayment) {
       const success = updatePayment(selectedPayment.matchId, selectedPayment.playerId, payAmount, paymentNote);
@@ -150,6 +160,15 @@ export default function PaymentsPage() {
         toast.success('Cập nhật thanh toán thành công!');
         setModalOpen(false);
         refreshData();
+
+        // Auto-sync
+        const newData = loadData();
+        const res = await syncDataToGoogle(newData);
+        if (res.success) {
+          toast.success('Đã đồng bộ Google Sheets!');
+        } else {
+          toast.warning('Chưa đồng bộ được Google Sheets: ' + res.error);
+        }
       }
     }
   };
