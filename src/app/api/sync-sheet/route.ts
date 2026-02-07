@@ -154,6 +154,8 @@ export async function POST(req: NextRequest) {
     const statsSheetId = metadata.data.sheets?.find(s => s.properties?.title === 'Thống kê')?.properties?.sheetId;
     if (statsSheetId !== undefined) {
       const formattingRequests: any[] = [
+        // FIRST: Unmerge everything to avoid overlaps
+        { unmergeCells: { range: { sheetId: statsSheetId } } },
         // Merge STT (A1:A2)
         { mergeCells: { range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 1 }, mergeType: 'MERGE_ALL' } },
         // Merge Tên (B1:B2)
