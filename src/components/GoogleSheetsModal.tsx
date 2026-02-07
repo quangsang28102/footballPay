@@ -150,7 +150,17 @@ export default function GoogleSheetsModal({ isOpen, onClose, onSave, initialConf
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Spreadsheet ID *</label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="block text-sm font-medium text-slate-400">Spreadsheet ID *</label>
+              <a 
+                href="https://docs.google.com/spreadsheets/d/1r6cuTPfHD7-YQo4FMnbl-SWoR_RbqtkG0N7fzy_Pf8s/edit" 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+              >
+                Mở Google Sheet <ExternalLink size={10} />
+              </a>
+            </div>
             <input
               type="text"
               required
