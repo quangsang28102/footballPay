@@ -7,9 +7,10 @@ import Modal, { ConfirmDialog } from '@/components/Modal';
 import { loadData, addMatch, updateMatch, deleteMatch } from '@/lib/storage';
 import { formatDate } from '@/lib/utils';
 import { AppData, Match, Player } from '@/types';
-import { Plus, Search, Edit2, Trash2, Eye, Users, MapPin, Calendar, Filter, X, Zap } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, Users, MapPin, Calendar, Filter, X, Zap, RefreshCw } from 'lucide-react';
 import CurrencyInput from '@/components/CurrencyInput';
 import MultiSelect from '@/components/MultiSelect';
+import { syncDataToGoogle } from '@/lib/google-sheets';
 
 // Tính ngày thứ 3 tiếp theo
 function getNextTuesday(): string {
@@ -129,15 +130,29 @@ export default function MatchesPage() {
       addMatch(formData);
       toast.success('Thêm trận đấu thành công!');
     }
-    setModalOpen(false);
-    refreshData();
+    const updatedData = loadData();
+    setData(updatedData);
+    
+    // Auto sync
+    toast.info('Đang đồng bộ dữ liệu...');
+    syncDataToGoogle(updatedData).then(res => {
+      if (res.success) toast.success('Đồng bộ Cloud thành công!');
+      else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
+    });
   };
 
   const handleDelete = () => {
     if (deleteId) {
-      deleteMatch(deleteId);
-      toast.success('Xóa trận đấu thành công!');
-      refreshData();
+      const updatedData = loadData();
+      setData(updatedData);
+      setConfirmOpen(false);
+
+      // Auto sync
+      toast.info('Đang đồng bộ dữ liệu...');
+      syncDataToGoogle(updatedData).then(res => {
+        if (res.success) toast.success('Đồng bộ Cloud thành công!');
+        else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
+      });
     }
   };
 

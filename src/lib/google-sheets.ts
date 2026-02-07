@@ -38,9 +38,34 @@ export const loadGoogleScripts = () => {
   });
 };
 
-// ... keep syncToSheet for fallback/legacy if needed, but not critical now.
-export const syncToSheet = async (config: GoogleConfig, data: AppData) => {
-    // Legacy client-side sync
-    if (!config.clientId || !config.apiKey) return;
-    // ... existing client implementation
+// Helper to trigger sync via API
+export const syncDataToGoogle = async (data: AppData) => {
+  const savedConfig = localStorage.getItem('google-sheets-config');
+  if (!savedConfig) return { error: 'Chưa cấu hình Google Sheets' };
+
+  try {
+    const config: GoogleConfig = JSON.parse(savedConfig);
+    if (!config.spreadsheetId || !config.serviceAccountJson) {
+      return { error: 'Thiếu thông tin cấu hình Google Sheets' };
+    }
+
+    const response = await fetch('/api/sync-sheet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        spreadsheetId: config.spreadsheetId,
+        data,
+        credentials: JSON.parse(config.serviceAccountJson),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error || 'Lỗi không xác định' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || 'Lỗi kết nối' };
+  }
 };

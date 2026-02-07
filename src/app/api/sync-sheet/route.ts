@@ -117,27 +117,37 @@ export async function POST(req: NextRequest) {
     const sortedMatches = [...data.matches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const sortedPlayers = [...data.players].sort((a, b) => a.name.localeCompare(b.name));
 
+    // Precise header building
     const statsHeader1 = ['STT', 'Thời gian'];
     const statsHeader2 = ['STT', 'Tên'];
     
     sortedMatches.forEach(m => {
       const dateStr = new Date(m.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      // Header 1: Column for date (will be merged later), then empty
       statsHeader1.push(dateStr, '');
+      // Header 2: Column labels
       statsHeader2.push('Số lượng', 'Giá/slot');
     });
 
-    statsHeader1.push('Tổng', 'Đã trả', 'Nợ');
-    statsHeader2.push('Tổng', 'Đã trả', 'Nợ');
+    // Add Totals at the end
+    statsHeader1.push('Tổng tiền', 'Đã trả', 'Còn nợ');
+    statsHeader2.push('Tổng tiền', 'Đã trả', 'Còn nợ');
 
     const statsRows = sortedPlayers.map((player, index) => {
       const row: any[] = [index + 1, player.name];
-      let totalOwed = 0; let totalPaid = 0;
+      let totalOwed = 0; 
+      let totalPaid = 0;
+      
       sortedMatches.forEach(match => {
         const playerPayments = data.payments.filter(p => p.matchId === match.id && p.playerId === player.id);
-        row.push(playerPayments.length, formatCurrency(playerPayments.reduce((s, p) => s + p.amountOwed, 0)));
-        totalOwed += playerPayments.reduce((s, p) => s + p.amountOwed, 0);
-        totalPaid += playerPayments.reduce((s, p) => s + p.amountPaid, 0);
+        const matchOwed = playerPayments.reduce((s, p) => s + p.amountOwed, 0);
+        const matchPaid = playerPayments.reduce((s, p) => s + p.amountPaid, 0);
+        
+        row.push(playerPayments.length || 0, formatCurrency(matchOwed));
+        totalOwed += matchOwed;
+        totalPaid += matchPaid;
       });
+      
       row.push(formatCurrency(totalOwed), formatCurrency(totalPaid), formatCurrency(totalOwed - totalPaid));
       return row;
     });
