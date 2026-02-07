@@ -48,7 +48,7 @@ export default function Sidebar({ onDataImport }: SidebarProps) {
   const [googleConfig, setGoogleConfig] = useState<GoogleConfig>({
     clientId: '',
     apiKey: '',
-    spreadsheetId: ''
+    spreadsheetId: process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID || ''
   });
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -65,6 +65,15 @@ export default function Sidebar({ onDataImport }: SidebarProps) {
       } catch (e) {
         console.error('Error parsing config', e);
       }
+    } else if (process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID) {
+        // If no saved config but env var exists, save it as default
+        const defaultConfig = {
+            clientId: '',
+            apiKey: '',
+            spreadsheetId: process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID
+        };
+        setGoogleConfig(defaultConfig);
+        localStorage.setItem('google-sheets-config', JSON.stringify(defaultConfig));
     }
   }, []);
 

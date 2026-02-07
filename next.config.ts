@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  env: {
+    NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID: process.env.SPREADSHEET_ID,
+  },
 };
 
 export default nextConfig;

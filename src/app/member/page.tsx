@@ -28,7 +28,7 @@ import { toast } from 'react-toastify';
 function MemberViewContent() {
   const { isAdmin } = useAuth();
   const searchParams = useSearchParams();
-  const cloudId = searchParams.get('id');
+  const cloudId = searchParams.get('id') || process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID;
   const [data, setData] = useState<AppData>({ players: [], matches: [], payments: [] });
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState('');

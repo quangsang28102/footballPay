@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import StatCard from '@/components/StatCard';
-import { loadData, getPaymentStatus } from '@/lib/storage';
+import { loadData, saveData, getPaymentStatus } from '@/lib/storage';
+import { toast } from 'react-toastify';
 import { AppData, Match, Player, Payment } from '@/types';
 import { 
   Calendar, 
@@ -38,7 +39,30 @@ export default function Dashboard() {
 
   useEffect(() => {
     setMounted(true);
-    setData(loadData());
+    const localData = loadData();
+    setData(localData);
+
+    // Auto-fetch if local data is empty but we have a default sheet ID
+    const defaultId = process.env.NEXT_PUBLIC_DEFAULT_SPREADSHEET_ID;
+    if (localData.players.length === 0 && defaultId) {
+      const fetchData = async () => {
+        try {
+          const res = await fetch(`/api/sync-sheet?id=${defaultId}`);
+          if (res.ok) {
+            const cloudData = await res.json();
+            if (cloudData.players && Array.isArray(cloudData.players)) {
+              setData(cloudData);
+              saveData(cloudData);
+              toast.success('Đã tự động tải dữ liệu từ Google Sheet');
+            }
+          }
+        } catch (error) {
+          console.error("Auto-fetch error", error);
+        }
+      };
+      
+      fetchData();
+    }
   }, []);
 
   const refreshData = () => {
