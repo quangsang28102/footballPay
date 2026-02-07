@@ -10,6 +10,7 @@ import { AppData, Match, Player } from '@/types';
 import { Plus, Search, Edit2, Trash2, Eye, Users, MapPin, Calendar, Filter, X, Zap, RefreshCw } from 'lucide-react';
 import CurrencyInput from '@/components/CurrencyInput';
 import MultiSelect from '@/components/MultiSelect';
+import DateInput from '@/components/DateInput';
 import { syncDataToGoogle } from '@/lib/google-sheets';
 
 // Tính ngày thứ 3 tiếp theo
@@ -130,17 +131,14 @@ export default function MatchesPage() {
       addMatch(formData);
       toast.success('Thêm trận đấu thành công!');
     }
-    const updatedData = loadData();
-    setData(updatedData);
+    setData(loadData());
     setModalOpen(false);
     
-    // Auto sync triggered AFTER success and modal closed
-    setTimeout(() => {
-      toast.info('Đang đồng bộ dữ liệu...');
-      syncDataToGoogle(updatedData).then(res => {
-        if (res.success) toast.success('Đồng bộ Cloud thành công!');
-        else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
-      });
+    // Auto sync
+    setTimeout(async () => {
+      const res = await syncDataToGoogle(loadData());
+      if (res.success) toast.success('Đồng bộ Cloud thành công!');
+      else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
     }, 500);
   };
 
@@ -149,18 +147,15 @@ export default function MatchesPage() {
       deleteMatch(deleteId);
       toast.success('Xóa trận đấu thành công!');
       
-      const updatedData = loadData();
-      setData(updatedData);
+      setData(loadData());
       setConfirmOpen(false);
       setDeleteId(null);
 
-      // Auto sync triggered AFTER success
-      setTimeout(() => {
-        toast.info('Đang đồng bộ dữ liệu...');
-        syncDataToGoogle(updatedData).then(res => {
-          if (res.success) toast.success('Đồng bộ Cloud thành công!');
-          else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
-        });
+      // Auto sync
+      setTimeout(async () => {
+        const res = await syncDataToGoogle(loadData());
+        if (res.success) toast.success('Đồng bộ Cloud thành công!');
+        else toast.warn('Lỗi đồng bộ Cloud: ' + res.error);
       }, 500);
     }
   };
@@ -294,7 +289,7 @@ export default function MatchesPage() {
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={selectedMatch ? 'Sửa trận đấu' : 'Thêm trận đấu'} size="lg">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div><label className="block text-sm text-slate-400 mb-2">Ngày *</label><input type="date" required value={formData.date} onChange={e => setFormData(f => ({ ...f, date: e.target.value }))} className="input" /></div>
+            <div><label className="block text-sm text-slate-400 mb-2">Ngày *</label><DateInput required value={formData.date} onChange={(val) => setFormData(f => ({ ...f, date: val }))} className="input" /></div>
             <div><label className="block text-sm text-slate-400 mb-2">Giờ</label><input type="time" value={formData.time} onChange={e => setFormData(f => ({ ...f, time: e.target.value }))} className="input" /></div>
           </div>
           <div className="mb-4"><label className="block text-sm text-slate-400 mb-2">Địa điểm *</label><input type="text" required placeholder="VD: Sân bóng ABC" value={formData.location} onChange={e => setFormData(f => ({ ...f, location: e.target.value }))} className="input" /></div>
@@ -313,7 +308,6 @@ export default function MatchesPage() {
               enableQuantity={true}
             />
           </div>
-          <div className="mb-4"><label className="block text-sm text-slate-400 mb-2">Ghi chú</label><textarea value={formData.notes} onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))} className="input min-h-[80px]" /></div>
           
           <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 mb-6">
             <div className="flex justify-between mb-2"><span className="text-slate-400">Tổng chi phí:</span><strong className="text-amber-400">{formatCurrency(totalCost)}</strong></div>

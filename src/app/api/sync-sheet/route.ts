@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
       await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
     }
 
+    // Re-fetch metadata to get correct sheet IDs after creating new sheets
+    const updatedMetadata = await sheets.spreadsheets.get({ spreadsheetId });
+
     const formatCurrency = (value: number) => {
       if (value === 0) return "0 đ";
       return value.toLocaleString('vi-VN') + " đ";
@@ -168,32 +171,42 @@ export async function POST(req: NextRequest) {
       return row;
     });
 
-    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Thống kê' });
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: 'Thống kê!A1',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [statsHeader1, statsHeader2, ...statsRows] }
-    });
-
     // --- 5. ENHANCE FORMATTING (Merging & Borders) ---
-    const statsSheetId = metadata.data.sheets?.find(s => s.properties?.title === 'Thống kê')?.properties?.sheetId;
+    const statsSheetId = updatedMetadata.data.sheets?.find(s => s.properties?.title === 'Thống kê')?.properties?.sheetId;
     if (statsSheetId !== undefined) {
       const lastMatchCol = 2 + (sortedMatches.length * 2);
       const totalColCount = lastMatchCol + 3;
       const totalRowCount = statsRows.length + 2;
 
-      const formattingRequests: any[] = [
-        // 1. FULL RESET: Unmerge and Reset Styles for the entire work area
+      // First batch: Clear everything including excess columns/rows from previous sync
+      const clearRequests: any[] = [
+        // Unmerge all cells first
         { unmergeCells: { range: { sheetId: statsSheetId } } },
+        // Clear ALL data and formatting in a large area to remove stale data
         {
           updateCells: {
             range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 500, startColumnIndex: 0, endColumnIndex: 50 },
-            fields: 'userEnteredFormat' // Resets colors, fonts, alignment, borders
+            fields: 'userEnteredValue,userEnteredFormat'
           }
-        },
-        
-        // 2. APPLY MERGES
+        }
+      ];
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests: clearRequests }
+      });
+
+      // Now write the new data
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'Thống kê!A1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [statsHeader1, statsHeader2, ...statsRows] }
+      });
+
+      // Apply formatting requests
+      const formattingRequests: any[] = [
+        // 1. APPLY MERGES
         // Merge STT (A1:A2)
         { mergeCells: { range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 1 }, mergeType: 'MERGE_ALL' } },
         // Merge Tên (B1:B2)
@@ -221,7 +234,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 3. APPLY STYLING (Headers)
+      // 2. APPLY STYLING (Headers)
       formattingRequests.push({
         repeatCell: {
           range: { sheetId: statsSheetId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: totalColCount },
@@ -231,7 +244,7 @@ export async function POST(req: NextRequest) {
               verticalAlignment: 'MIDDLE',
               textFormat: { bold: true },
               backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
-              numberFormat: { type: 'TEXT' }, // Force text for headers to avoid 46062
+              numberFormat: { type: 'TEXT' },
               borders: {
                 top: { style: 'SOLID' }, bottom: { style: 'SOLID' },
                 left: { style: 'SOLID' }, right: { style: 'SOLID' }
@@ -242,7 +255,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // 4. APPLY BORDERS TO DATA & ALIGNMENT
+      // 3. APPLY BORDERS TO DATA & ALIGNMENT
       formattingRequests.push({
         updateBorders: {
           range: { sheetId: statsSheetId, startRowIndex: 2, endRowIndex: totalRowCount, startColumnIndex: 0, endColumnIndex: totalColCount },
@@ -271,6 +284,15 @@ export async function POST(req: NextRequest) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: { requests: formattingRequests }
+      });
+    } else {
+      // Sheet ID not found, just write the data
+      await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Thống kê' });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'Thống kê!A1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [statsHeader1, statsHeader2, ...statsRows] }
       });
     }
 
