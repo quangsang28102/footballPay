@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Lock, ChevronRight, AlertCircle, Trophy } from 'lucide-react';
 import { toast } from 'react-toastify';
+import LogoMark from '@/components/LogoMark';
 
 export default function LoginPage() {
   const [pin, setPin] = useState('');
@@ -41,7 +42,7 @@ export default function LoginPage() {
         <div className="glass-card p-8 text-center bg-white/5 border-white/10">
           <div className="mb-8 flex justify-center">
             <div className="w-16 h-16 flex items-center justify-center transform -rotate-6">
-              <img src="https://assets.manutd.com/AssetPicker/images/0/0/3/2/197240/Header-Logo1500994616801.png" alt="Logo" className="w-full h-full object-contain filter drop-shadow-2xl" />
+              <LogoMark size={64} priority className="drop-shadow-2xl" />
             </div>
           </div>
 

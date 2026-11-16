@@ -21,6 +21,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import LogoMark from '@/components/LogoMark';
 import { exportToExcel, importFromExcel } from '@/lib/excel';
 import { loadGoogleScripts, syncDataToGoogle, GoogleConfig } from '@/lib/google-sheets';
 import { loadData, saveData } from '@/lib/storage';
@@ -161,7 +162,7 @@ export default function Sidebar({ onDataImport }: SidebarProps) {
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
-              <img src="https://assets.manutd.com/AssetPicker/images/0/0/3/2/197240/Header-Logo1500994616801.png" alt="Logo" className="w-full h-full object-contain" />
+              <LogoMark />
             </div>
             <div>
               <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">

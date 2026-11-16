@@ -24,6 +24,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-toastify';
+import LogoMark from '@/components/LogoMark';
 
 function MemberViewContent() {
   const { isAdmin } = useAuth();
@@ -149,7 +150,7 @@ function MemberViewContent() {
         <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
-              <img src="https://assets.manutd.com/AssetPicker/images/0/0/3/2/197240/Header-Logo1500994616801.png" alt="Logo" className="w-full h-full object-contain" />
+              <LogoMark />
             </div>
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
